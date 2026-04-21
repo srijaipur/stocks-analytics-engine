@@ -79,6 +79,7 @@ Finviz screener (paginated HTML scrape)
 ```
 stocks-analytics-engine/
 ├── index.js                  # Main entry point — full analytics pipeline
+├── visualizer.js             # Reads stocks.xlsx → generates data/report.html (card grid + charts)
 ├── package.json
 ├── Dockerfile
 ├── eslint.config.js
@@ -87,7 +88,7 @@ stocks-analytics-engine/
 │   ├── prices.js             # Yahoo Finance 150-day OHLCV fetcher
 │   └── institutions.js       # NASDAQ API 13F institutional holdings fetcher
 ├── factors/
-│   ├── fundamentals.js       # EPS level/trend, Beta, RSI-14, SMA-200 dist, inst. accum.
+│   ├── fundamentals.js       # EPS level/trend, Beta, RSI-14, SMA-200 dist, inst. accum., earnings date
 │   ├── technicals.js         # MA slope, volume expansion, relative strength, Jensen's Alpha
 │   ├── normalize.js          # percentileRank() — cross-universe ranking
 │   └── risk.js               # maxDrawdown() — computed but not in composite
@@ -137,6 +138,7 @@ Additional signals computed but not included in the composite score:
 - **Relative Strength** — 63-day return vs. the `^OEX` benchmark.
 - **Max Drawdown** — peak-to-trough drawdown from price history.
 - **Institutional Accumulation** — Finviz `instTrans` % and NASDAQ 13F new/sold-out counts.
+- **Earnings Date** — next scheduled announcement date parsed from Finviz; tickers with earnings in the next 7 days are highlighted in a dedicated card strip in the visual report.
 
 ### Output Color Coding
 
@@ -200,6 +202,18 @@ npm run screen-ndx      # Nasdaq 100
 npm run screen-sp100    # S&P 100
 npm run screen-all      # All four indices
 ```
+
+
+### Generate the visual report
+
+Reads `ScoresCurrent` from `stocks.xlsx` and writes a self-contained `data/report.html` with a score card grid, scatter charts, upcoming earnings strip, and a full sortable data table:
+
+```bash
+npm run visualize             # write data/report.html
+npm run visualize:serve       # write + open in browser at http://localhost:3000
+```
+
+> Run `npm start` first — the report reads from the Excel workbook.
 
 ### Combined first-run setup
 
