@@ -14,11 +14,12 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const { portfolio: portfolioTickers, watchlist: watchlistTickers } =
-  JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/tickers.json"), "utf8"));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
+
+const { portfolio: portfolioTickers, watchlist: watchlistTickers } =
+  JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/tickers.json"), "utf8"));
 
 const workbook = new ExcelJS.Workbook();
 

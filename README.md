@@ -169,15 +169,26 @@ Rows in `ScoresCurrent` are color-coded by composite score:
 npm install
 ```
 
-### 2. Create the Excel workbook
+### 2. Configure your ticker lists
 
-Run once to generate `data/stocks.xlsx` with all required sheets pre-populated with default Portfolio and Watchlist tickers:
+Edit `data/tickers.json` to set your Portfolio and Watchlist tickers. This is the single source of truth — `createWorkbook.js` reads from it:
+
+```json
+{
+  "portfolio": ["NVDA", "TSLA", "AAPL"],
+  "watchlist": ["VRT", "BE", "QS"]
+}
+```
+
+### 3. Create the Excel workbook
+
+Run once (and re-run any time you change `tickers.json`) to generate `data/stocks.xlsx`:
 
 ```bash
 node scripts/createWorkbook.js
 ```
 
-You can then open `data/stocks.xlsx` and edit the **Portfolio** and **Watchlist** sheets to add or remove tickers (one per row, starting at row 2).
+> To add or remove tickers in future, edit `data/tickers.json` and re-run `createWorkbook.js` — do not edit the Excel file directly.
 
 ---
 
