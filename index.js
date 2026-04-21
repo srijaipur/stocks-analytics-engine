@@ -11,6 +11,7 @@ import {
   getBeta,
   getRsi14,
   getSma200Dist,
+  getEarningsDate,
 } from "./factors/fundamentals.js";
 import { maSlope, volumeExpansion, relativeStrength, jensensAlpha } from "./factors/technicals.js";
 import { percentileRank } from "./factors/normalize.js";
@@ -114,6 +115,7 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
     const netInstitutional = institutions.netActivity;
     const rsVsSP100 = relativeStrength(prices, sp100Prices);
     const alpha = jensensAlpha(prices, sp100Prices, beta);
+    const earningsDate = getEarningsDate(fundamentals);
 
     // Composite Score (0–100) — Option B:
     // 30% P(EPS_Percentile_In_Universe) + 30% P(EPS_Fwd_Growth) + 20% P(MA_Slope_50) + 10% P(RSI_14) + 10% P(SMA200_Dist)
@@ -139,6 +141,7 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
       netInstitutional,
       rsVsSP100,
       compositeScore,
+      earningsDate,
     ];
   });
 

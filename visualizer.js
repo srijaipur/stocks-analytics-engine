@@ -58,9 +58,6 @@ function buildHtml(headers, rows) {
     return "#f44336";
   };
 
-  // Pre-compute colors for each row (used in chart datasets)
-  const barColors = rows.map((r) => scoreColor(r["Composite_Score"]));
-
   const html = /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -109,6 +106,37 @@ function buildHtml(headers, rows) {
     outline: none;
   }
   input[type=search]:focus { border-color: #555; }
+
+  /* Ticker Card Grid */
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+  .section-header h2 { font-size: 1rem; color: #aaa; }
+  .tier-legend { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .legend-pill { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid; color: #ccc; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; padding: 0 2rem 2rem; }
+  .ticker-card {
+    border-radius: 10px; padding: 0.9rem 1rem; border: 1px solid transparent;
+    display: flex; flex-direction: column; gap: 0.3rem; transition: transform 0.15s, border-color 0.15s;
+  }
+  .ticker-card:hover { transform: translateY(-2px); border-color: #ffffff22 !important; }
+  .tc-ticker { font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.03em; }
+  .tc-score  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .tc-delta  { font-size: 0.78rem; font-weight: 600; }
+  .tc-label  { font-size: 0.68rem; color: #999; margin-top: 0.2rem; }
+
+  /* Upcoming Earnings */
+  .earnings-section { padding: 0 2rem 2rem; }
+  .earnings-section h2 { font-size: 1rem; color: #aaa; margin-bottom: 0.75rem; }
+  .earnings-empty { color: #555; font-size: 0.85rem; padding: 0.5rem 0; }
+  .earnings-strip { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .earnings-card {
+    background: #1a1d27; border: 1px solid #f59e0b55; border-radius: 10px;
+    padding: 0.75rem 1rem; min-width: 130px;
+    display: flex; flex-direction: column; gap: 0.25rem;
+  }
+  .ec-ticker { font-size: 0.85rem; font-weight: 700; color: #fff; }
+  .ec-date   { font-size: 0.8rem; color: #f59e0b; font-weight: 600; }
+  .ec-days   { font-size: 0.7rem; color: #888; }
+  .ec-score  { font-size: 0.7rem; margin-top: 0.15rem; }
 </style>
 </head>
 <body>
@@ -116,13 +144,25 @@ function buildHtml(headers, rows) {
 <h1>Stocks Analytics Report</h1>
 <p class="subtitle">Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; ${rows.length} tickers</p>
 
-<div class="grid">
-
-  <!-- Composite Score Bar Chart -->
-  <div class="card full">
-    <h2>Composite Score — Universe Ranking</h2>
-    <canvas id="barChart"></canvas>
+<!-- Ticker Card Grid -->
+<div class="section-header">
+  <h2>Composite Score — Universe Ranking</h2>
+  <div class="tier-legend">
+    <span class="legend-pill" style="background:#0d2218;border-color:#4caf50">&ge; 70 &nbsp;Strong Buy</span>
+    <span class="legend-pill" style="background:#0d1a2e;border-color:#2196f3">50 &ndash; 70 &nbsp;Monitor</span>
+    <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
+    <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
   </div>
+</div>
+<div class="card-grid" id="cardGrid"></div>
+
+<!-- Upcoming Earnings (next 7 days) -->
+<div class="earnings-section">
+  <h2>&#128197; Upcoming Earnings &mdash; Next 7 Days</h2>
+  <div class="earnings-strip" id="earningsStrip"></div>
+</div>
+
+<div class="grid">
 
   <!-- Alpha vs RSI Scatter -->
   <div class="card">
@@ -175,35 +215,39 @@ function fmt(v, decimals = 2) {
   return typeof v === "number" ? v.toFixed(decimals) : v;
 }
 
-// ── 1. Bar Chart — sorted descending by Composite_Score ──────────────────────
-const sorted = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
-new Chart(document.getElementById("barChart"), {
-  type: "bar",
-  data: {
-    labels: sorted.map(r => r.Ticker),
-    datasets: [{
-      label: "Composite Score",
-      data: sorted.map(r => r.Composite_Score),
-      backgroundColor: sorted.map(r => scoreColor(r.Composite_Score)),
-      borderRadius: 4,
-    }, {
-      label: "Daily Delta",
-      data: sorted.map(r => r.Daily_Composite_Score_delta),
-      backgroundColor: sorted.map(r =>
-        (r.Daily_Composite_Score_delta ?? 0) >= 0 ? "#4caf5066" : "#f4433666"
-      ),
-      borderRadius: 4,
-    }]
-  },
-  options: {
-    indexAxis: "y",
-    responsive: true,
-    plugins: { legend: { labels: { color: "#aaa" } } },
-    scales: {
-      x: { ticks: { color: "#888" }, grid: { color: "#ffffff0f" }, min: 0, max: 100 },
-      y: { ticks: { color: "#ccc", font: { size: 10 } }, grid: { color: "#ffffff08" } }
-    }
-  }
+// ── 1. Ticker Card Grid — sorted descending by Composite_Score ───────────────
+const TIERS = [
+  { min: 70, bg: "#0d2218", border: "#4caf5055", scoreColor: "#4caf50", label: "Strong Buy" },
+  { min: 50, bg: "#0d1a2e", border: "#2196f355", scoreColor: "#2196f3", label: "Monitor"    },
+  { min: 30, bg: "#2a1a0a", border: "#ff980055", scoreColor: "#ff9800", label: "Weak"       },
+  { min:  0, bg: "#2a0d0d", border: "#f4433655", scoreColor: "#f44336", label: "Reduce"     },
+];
+function getTier(s) { return TIERS.find(t => (s ?? 0) >= t.min) ?? TIERS[TIERS.length - 1]; }
+
+const sortedCards = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+const cardGrid = document.getElementById("cardGrid");
+
+sortedCards.forEach(r => {
+  const score = r.Composite_Score;
+  const delta = r.Daily_Composite_Score_delta;
+  const tier  = getTier(score);
+
+  const deltaHtml = delta === null || delta === undefined
+    ? '<span style="color:#555">\u2014</span>'
+    : delta >= 0
+      ? \`<span style="color:#4caf50">\u25b2 +\${delta.toFixed(1)}</span>\`
+      : \`<span style="color:#f44336">\u25bc \${delta.toFixed(1)}</span>\`;
+
+  const card = document.createElement("div");
+  card.className = "ticker-card";
+  card.style.cssText = \`background:\${tier.bg};border-color:\${tier.border}\`;
+  card.innerHTML = \`
+    <div class="tc-ticker">\${r.Ticker}</div>
+    <div class="tc-score" style="color:\${tier.scoreColor}">\${score != null ? score.toFixed(1) : "\u2014"}</div>
+    <div class="tc-delta">\${deltaHtml}</div>
+    <div class="tc-label">\${tier.label}</div>
+  \`;
+  cardGrid.appendChild(card);
 });
 
 // ── 2. Scatter — Alpha vs RSI ─────────────────────────────────────────────────
@@ -268,9 +312,44 @@ new Chart(document.getElementById("slopeChart"), {
   }
 });
 
-// ── 4. Data Table ─────────────────────────────────────────────────────────────
+// ── 4. Upcoming Earnings Card Strip ──────────────────────────────────────────
+const strip = document.getElementById("earningsStrip");
+const now   = new Date();
+now.setHours(0, 0, 0, 0);
+const in7   = new Date(now.getTime() + 7 * 86400000);
+
+const upcoming = ROWS
+  .filter(r => {
+    if (!r.Earnings_Date) return false;
+    const d = new Date(r.Earnings_Date);
+    return d >= now && d <= in7;
+  })
+  .sort((a, b) => new Date(a.Earnings_Date) - new Date(b.Earnings_Date));
+
+if (upcoming.length === 0) {
+  strip.innerHTML = '<span class="earnings-empty">No earnings announcements found in the next 7 days for tracked tickers.</span>';
+} else {
+  upcoming.forEach(r => {
+    const d      = new Date(r.Earnings_Date);
+    const diff   = Math.round((d - now) / 86400000);
+    const daysLbl = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : \`In \${diff} days\`;
+    const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    const tier    = getTier(r.Composite_Score);
+    const card    = document.createElement("div");
+    card.className = "earnings-card";
+    card.innerHTML = \`
+      <div class="ec-ticker">\${r.Ticker}</div>
+      <div class="ec-date">\${dateStr}</div>
+      <div class="ec-days">\${daysLbl}</div>
+      <div class="ec-score" style="color:\${tier.scoreColor}">Score \${r.Composite_Score != null ? r.Composite_Score.toFixed(1) : "\u2014"} &middot; \${tier.label}</div>
+    \`;
+    strip.appendChild(card);
+  });
+}
+
+// ── 5. Data Table ─────────────────────────────────────────────────────────────
 const COLS = [
-  "Ticker", "Composite_Score", "Daily_Composite_Score_delta",
+  "Ticker", "Composite_Score", "Daily_Composite_Score_delta", "Earnings_Date",
   "EPS_TTM", "EPS_Percentile_In_Universe", "EPS_Fwd_Grwth_Trnd",
   "Alpha_63D", "Beta", "RSI_14Day", "SMA200_Dist_%",
   "MA_Slope_50", "Vol Expansion", "Institutional_Accumulation_%",

@@ -34,3 +34,19 @@ export function getRsi14(data) {
 export function getSma200Dist(data) {
   return parseFloat(String(data.sma200).replace("%", "")) || 0;
 }
+
+// Returns the next earnings announcement date as "YYYY-MM-DD", or null if unavailable.
+// Finviz `earnings` field format: "Apr 30 AMC" / "May 01 BMO" (AMC = after close, BMO = before open).
+// Year is inferred: if the parsed date is >30 days in the past, next calendar year is assumed.
+export function getEarningsDate(data) {
+  const raw = String(data.earnings ?? "").trim();
+  if (!raw || raw === "N/A" || raw === "-") return null;
+  const parts = raw.split(/\s+/);
+  if (parts.length < 2) return null;
+  const [mon, day] = parts;
+  const now = new Date();
+  const candidate = new Date(`${mon} ${day} ${now.getFullYear()}`);
+  if (isNaN(candidate.getTime())) return null;
+  if (candidate < new Date(now - 30 * 86400000)) candidate.setFullYear(now.getFullYear() + 1);
+  return candidate.toISOString().slice(0, 10);
+}

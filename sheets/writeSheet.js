@@ -30,6 +30,7 @@ export async function writeScores(rows) {
     "LastQRtr_InstActivity",
     "RS_vs_SP100",
     "Composite_Score",
+    "Earnings_Date",
     "Daily_Composite_Score_delta",
   ];
 
@@ -61,16 +62,16 @@ export async function writeScores(rows) {
     if (score >= 70) return "FFC6EFCE"; // Green  — Strong Buy candidate
     if (score >= 50) return "FFDDEBF7"; // Teal   — Hold / Monitor
     if (score >= 30) return "FFFCE4D6"; // Pink   — Weak / Neutral
-    return "FFFFC7CE"; // Red    — Consider reducing position
+    return                 "FFFFC7CE"; // Red    — Consider reducing position
   };
 
   // Write new rows, appending Daily_Composite_Score_delta and applying row colour
   // delta is null for tickers with no prior snapshot
   rows.forEach((row, i) => {
-    const ticker = String(row[0]).trim();
+    const ticker   = String(row[0]).trim();
     const newScore = parseFloat(row[13]);
-    const prev = prevScores.get(ticker);
-    const delta = prev !== undefined && !isNaN(newScore) ? +(newScore - prev).toFixed(2) : null;
+    const prev     = prevScores.get(ticker);
+    const delta    = prev !== undefined && !isNaN(newScore) ? +(newScore - prev).toFixed(2) : null;
 
     const excelRow = sheet.getRow(i + 2);
     excelRow.values = [...row, delta];
@@ -130,9 +131,9 @@ export async function writeScores(rows) {
 
   // Apply colour coding to the Score Range / Signal rows so they match ScoresCurrent
   const signalColors = [
-    { signal: "Strong Buy candidate", argb: "FFC6EFCE" }, // Green
-    { signal: "Hold / Monitor", argb: "FFDDEBF7" }, // Teal
-    { signal: "Weak / Neutral", argb: "FFFCE4D6" }, // Pink
+    { signal: "Strong Buy candidate",       argb: "FFC6EFCE" }, // Green
+    { signal: "Hold / Monitor",             argb: "FFDDEBF7" }, // Teal
+    { signal: "Weak / Neutral",             argb: "FFFCE4D6" }, // Pink
     { signal: "Consider reducing position", argb: "FFFFC7CE" }, // Red
   ];
   legend.eachRow((row, rowNumber) => {
