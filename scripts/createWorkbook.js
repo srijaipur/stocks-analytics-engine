@@ -12,6 +12,10 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const { portfolio: portfolioTickers, watchlist: watchlistTickers } =
+  JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/tickers.json"), "utf8"));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
@@ -47,48 +51,11 @@ function writeTickers(sheet, tickers) {
 
 // --- Portfolio sheet ---
 const portfolio = ensureSheet("Portfolio", ["Ticker"]);
-writeTickers(portfolio, [
-  "XOM",
-  "AMD",
-  "SNOW",
-  "TSLA",
-  "NFLX",
-  "NVDA",
-  "UNH",
-  "PLTR",
-  "DIS",
-  "UROY",
-  "OKTA",
-  "INTC",
-  "NTLA",
-  "CRSP",
-  "ALHC",
-  "BIIB",
-  "BIO",
-  "ENPH",
-  "MSTR",
-  "SMR",
-  "IONQ",
-  "JOBY",
-  "ACHR",
-  "SOFI",
-  "BA",
-  "AVGO",
-  "RIVN",
-  "CEG",
-  "PYPL",
-  "CRWD",
-  "PERI",
-  "BLSH",
-  "MBLY",
-  "CMS",
-  "IOT",
-  "SHOP",
-]);
+writeTickers(portfolio, portfolioTickers);
 
 // --- Watchlist sheet ---
 const watchlist = ensureSheet("Watchlist", ["Ticker"]);
-writeTickers(watchlist, ["VRT", "BE", "SMRT", "USAR", "LRCX", "QS", "P"]);
+writeTickers(watchlist, watchlistTickers);
 
 // --- ScoresCurrent sheet (managed by engine) ---
 ensureSheet("ScoresCurrent", [

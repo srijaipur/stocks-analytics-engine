@@ -1,0 +1,7 @@
+node_modules/
+data/stocks.xlsx
+data/report.html
+.env
+*.log
+*.xlsx
+*.tgz
