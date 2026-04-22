@@ -188,7 +188,12 @@ Run once (and re-run any time you change `tickers.json`) to generate `data/stock
 node scripts/createWorkbook.js
 ```
 
-> To add or remove tickers in future, edit `data/tickers.json` and re-run `createWorkbook.js` — do not edit the Excel file directly.
+**Important:** The script is **idempotent** — it appends new tickers from `tickers.json` without removing existing entries in the Excel file. This allows you to:
+- Add tickers to `tickers.json` and re-run the script to sync them
+- Manually add tickers directly in the Excel file without losing them on the next run
+- Store both `data/tickers.json` and `data/stocks.xlsx` as your complete ticker list
+
+> **Note:** Only add valid, real stock tickers. Invalid or delisted tickers will cause request failures when the engine runs. Use `tickers.json` as your source of truth for your portfolio and watchlist.
 
 ---
 

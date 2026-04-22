@@ -78,7 +78,7 @@ const INDEX_CONFIGS = {
     sectors: SHARED_SECTORS,
     betaMin: 0.7,
     betaMax: 1.2,
-    rsiMin: 68,
+    rsiMin: 50,
     topN: 15,
   },
 
@@ -95,7 +95,7 @@ const INDEX_CONFIGS = {
     sectors: [], // No sector filter — Dow is diversified by design
     betaMin: 0.7,
     betaMax: 1.2,
-    rsiMin: 64,
+    rsiMin: 50,
     topN: 15,
   },
 
@@ -112,7 +112,7 @@ const INDEX_CONFIGS = {
     sectors: SHARED_SECTORS,
     betaMin: 0.7,
     betaMax: 1.3, // Slightly wider — Nasdaq stocks tend to be more volatile
-    rsiMin: 68,
+    rsiMin: 60,
     topN: 15,
   },
 
@@ -130,7 +130,7 @@ const INDEX_CONFIGS = {
     sectors: SHARED_SECTORS,
     betaMin: 0.7,
     betaMax: 1.2,
-    rsiMin: 68,
+    rsiMin: 50,
     topN: 15,
   },
 };

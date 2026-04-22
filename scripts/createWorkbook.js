@@ -40,13 +40,26 @@ function ensureSheet(name, headerRow) {
   return workbook.getWorksheet(name);
 }
 
-// Writes a ticker list to a sheet, always replacing whatever is there.
-// createWorkbook.js is the source of truth for Portfolio and Watchlist.
+// Adds missing tickers from tickers.json to the sheet.
+// Preserves any manually added tickers in the Excel file.
+// tickers.json is the source of truth for which tickers should exist.
 function writeTickers(sheet, tickers) {
-  const lastRow = sheet.lastRow?.number || 1;
-  if (lastRow > 1) sheet.spliceRows(2, lastRow - 1);
-  tickers.forEach((t, i) => {
-    sheet.getRow(i + 2).values = [t];
+  // Get existing tickers already in the sheet
+  const existingTickers = new Set();
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber > 1) {
+      const ticker = row.getCell(1).value;
+      if (ticker) existingTickers.add(ticker);
+    }
+  });
+
+  // Only add tickers that aren't already there
+  let nextRow = sheet.lastRow?.number || 1;
+  tickers.forEach((t) => {
+    if (!existingTickers.has(t)) {
+      nextRow++;
+      sheet.getRow(nextRow).values = [t];
+    }
   });
 }
 
