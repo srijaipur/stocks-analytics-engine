@@ -142,6 +142,10 @@ function buildHtml(headers, rows) {
 <body>
 
 <h1>Stocks Analytics Report</h1>
+
+<p style="opacity:0.6;font-size:0.7rem">
+  Last build (UTC): ${new Date().toISOString()}
+</p>
 <p>BUILD ID: ${Date.now()}</p>
 <p class="subtitle">Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; ${rows.length} tickers</p>
 
