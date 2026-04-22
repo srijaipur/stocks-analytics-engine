@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs every day at 02:00 UTC
     - cron: "0 2 * * *"
-  workflow_dispatch:   # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build-and-publish:
@@ -27,28 +27,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # 4. Run analytics + visualizer
-      - name: Generate analytics report
+      # 4. Generate analytics report (CI-safe)
+      # IMPORTANT: visualizer.js must create data/report.html
+      - name: Generate report
         run: |
-          npm run start
+          node visualizer.js
           ls -lh data/report.html
 
-      # 5. Switch to gh-pages branch
+      # ✅ 5. STASH the generated report BEFORE branch switch
+      - name: Stash report artifact
+        run: |
+          mkdir -p /tmp/report
+          cp data/report.html /tmp/report/report.html
+
+      # 6. Switch to gh-pages branch
       - name: Checkout gh-pages branch
         run: |
           git checkout gh-pages || git checkout --orphan gh-pages
 
-      # 6. Clean gh-pages root
+      # 7. Clean gh-pages root safely
       - name: Clean gh-pages root
         run: |
           find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
 
-      # 7. Publish report as index.html
+      # ✅ 8. Publish stashed report
       - name: Publish report
         run: |
-          cp data/report.html index.html
+          cp /tmp/report/report.html index.html
 
-      # 8. Commit and push
+      # 9. Commit and push
       - name: Commit and push
         run: |
           git config user.name "github-actions"
