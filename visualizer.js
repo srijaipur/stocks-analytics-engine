@@ -142,6 +142,7 @@ function buildHtml(headers, rows) {
 <body>
 
 <h1>Stocks Analytics Report</h1>
+<p>BUILD ID: ${Date.now()}</p>
 <p class="subtitle">Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; ${rows.length} tickers</p>
 
 <!-- Ticker Card Grid -->
