@@ -1,4 +1,4 @@
-name: Nightly Build & Publish Analytics Report
+name: Nightly Build & Publish Stocks Analytics Report
 
 on:
   schedule:
