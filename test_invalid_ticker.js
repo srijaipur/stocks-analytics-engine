@@ -1,7 +1,7 @@
 import { getPrices } from "./data/prices.js";
 import { getFundamentals } from "./data/fundamentals.js";
 
-const ticker = "F";
+const ticker = "I";
 console.log(`Testing invalid ticker: ${ticker}`);
 
 try {
