@@ -9,6 +9,7 @@ A Node.js quantitative stock analytics engine that fetches multi-source market d
 ## Table of Contents
 
 - [Overview](#overview)
+- [Recent Changes](#recent-changes)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Data Sources](#data-sources)
@@ -34,6 +35,28 @@ The engine operates on a universe of tickers drawn from up to six named sheets i
 6. Writes results back to `ScoresCurrent`, snapshots the previous day's scores for delta tracking, and generates a `Composite_Formula` legend sheet — all color-coded by score.
 
 A separate screener script (`scripts/screenIndex.js`) populates the index sheets by scraping Finviz, post-filtering on Beta, RSI, and Jensen's Alpha, and writing the top-ranked candidates.
+
+---
+
+## Recent Changes
+
+### ✨ Improved Workbook Management (Latest)
+
+**New Features:**
+- **Idempotent ticker sync** — `createWorkbook.js` now appends new tickers instead of replacing all rows
+  - Preserves manually added tickers in the Excel file
+  - Allows concurrent management of `tickers.json` and `stocks.xlsx`
+  - Safe to re-run multiple times without data loss
+
+- **New cleanup script** — `scripts/cleanWorkbook.js` (or `npm run clean-workbook`)
+  - Solves the problem of invalid/test tickers blocking the engine
+  - Deletes and regenerates `stocks.xlsx` from `tickers.json`
+  - Use when request failures occur due to non-existent tickers
+
+- **GitHub Actions workflow** — Automated daily analytics report generation
+  - Runs weekdays at 21:00 UTC (after US market close)
+  - Automatically syncs tickers and generates `report.html`
+  - Published to GitHub Pages for easy viewing
 
 ---
 
@@ -195,6 +218,20 @@ node scripts/createWorkbook.js
 
 > **Note:** Only add valid, real stock tickers. Invalid or delisted tickers will cause request failures when the engine runs. Use `tickers.json` as your source of truth for your portfolio and watchlist.
 
+### 4. Clean the workbook (if needed)
+
+If the Excel file contains invalid or test tickers causing request failures, regenerate it fresh from `tickers.json`:
+
+```bash
+# Via npm script
+npm run clean-workbook
+
+# Or directly
+node scripts/cleanWorkbook.js
+```
+
+This removes the existing `data/stocks.xlsx` and creates a fresh copy with only valid tickers from `tickers.json`.
+
 ---
 
 ## Usage
@@ -205,6 +242,18 @@ Fetches data for all tickers across all sheets, computes composite scores, and w
 
 ```bash
 npm start
+```
+
+### Manage the Excel workbook
+
+**Create or update:**
+```bash
+npm run setup    # setup with all index screeners (one-time full initialization)
+```
+
+**Clean and regenerate** (removes invalid tickers):
+```bash
+npm run clean-workbook    # deletes and recreates stocks.xlsx from tickers.json
 ```
 
 ### Populate index sheets (screener)

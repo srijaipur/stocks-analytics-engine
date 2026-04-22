@@ -13,9 +13,7 @@ const watchlist = workbook.getWorksheet("Watchlist");
 
 console.log("📊 Portfolio sheet content:");
 portfolio.eachRow((row, rowNumber) => {
-  if (rowNumber <= 15) {
-    console.log(`  Row ${rowNumber}: ${row.getCell(1).value}`);
-  }
+  console.log(`  Row ${rowNumber}: ${row.getCell(1).value}`);
 });
 
 console.log("\n📋 Watchlist sheet content:");
