@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --use-system-ca --experimental-specifier-resolution=node index.js && node --use-system-ca visualizer.js",
+    "start": "node index.js && node visualizer.js",
     "screen-rut": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js rut",
     "screen-dji": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js dji",
     "screen-ndx": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js ndx",
