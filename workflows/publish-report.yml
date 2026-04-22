@@ -1,0 +1,58 @@
+name: Nightly Build & Publish Analytics Report
+
+on:
+  schedule:
+    # Runs every day at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:   # allows manual trigger from GitHub UI
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout main branch
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Run analytics + visualizer
+      - name: Generate analytics report
+        run: |
+          npm run start
+          ls -lh data/report.html
+
+      # 5. Switch to gh-pages branch
+      - name: Checkout gh-pages branch
+        run: |
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+      # 6. Clean gh-pages root
+      - name: Clean gh-pages root
+        run: |
+          find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
+
+      # 7. Publish report as index.html
+      - name: Publish report
+        run: |
+          cp data/report.html index.html
+
+      # 8. Commit and push
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add index.html
+          git commit -m "Nightly publish analytics report" || echo "No changes to commit"
+          git push origin gh-pages
