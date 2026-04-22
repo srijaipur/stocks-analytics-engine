@@ -1,0 +1,73 @@
+name: Publish Analytics Report
+
+ 
+
+on:
+
+  schedule:
+
+    - cron: '0 21 * * 1-5'   # weekdays 21:00 UTC (after US market close)
+
+  workflow_dispatch:           # manual trigger from GitHub UI
+
+ 
+
+jobs:
+
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    permissions:
+
+      contents: write
+
+ 
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+ 
+
+      - uses: actions/setup-node@v4
+
+        with:
+
+          node-version: '24'
+
+ 
+
+      - run: npm ci --omit=dev
+
+ 
+
+      - name: Seed workbook
+
+        run: node scripts/createWorkbook.js
+
+ 
+
+      - name: Run analytics pipeline
+
+        run: node --experimental-specifier-resolution=node index.js
+
+ 
+
+      - name: Generate HTML report
+
+        run: node visualizer.js
+
+ 
+
+      - name: Deploy to GitHub Pages
+
+        uses: peaceiris/actions-gh-pages@v4
+
+        with:
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+          publish_dir: ./data
+
+          destination_dir: .
