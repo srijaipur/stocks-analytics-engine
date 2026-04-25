@@ -1,0 +1,42 @@
+{
+  "name": "stocks-analytics-engine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js && node visualizer.js",
+    "screen-rut": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js rut",
+    "screen-dji": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js dji",
+    "screen-ndx": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js ndx",
+    "screen-sp100": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js sp100",
+    "screen-all": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js all",
+    "setup": "node scripts/createWorkbook.js && node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js all",    
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "visualize": "node --use-system-ca visualizer.js",
+    "visualize:serve": "node --use-system-ca visualizer.js --serve"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@stonksjs/finviz": "^3.0.1",
+    "axios": "^1.15.0",
+    "dayjs": "^1.11.20",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "simple-statistics": "^7.8.9",
+    "yahoo-finance2": "^3.14.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "globals": "^15.0.0",
+    "prettier": "^3.0.0"
+  }
+}

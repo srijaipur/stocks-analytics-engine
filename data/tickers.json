@@ -1,0 +1,9 @@
+{
+  "portfolio": [
+    "XOM", "AMD", "SNOW", "TSLA", "NFLX", "NVDA", "UNH", "PLTR", "DIS",
+    "UROY", "OKTA", "INTC", "NTLA", "CRSP", "ALHC", "BIIB", "BIO", "ENPH",
+    "MSTR", "SMR", "IONQ", "JOBY", "ACHR", "SOFI", "BA", "AVGO", "RIVN",
+    "CEG", "PYPL", "CRWD", "PERI", "BLSH", "MBLY", "CMS", "IOT", "SHOP", "AMZN", "UUUU","IDCC"
+  ],
+  "watchlist": ["VRT", "BE", "SMRT", "USAR", "LRCX", "QS", "P"]
+}

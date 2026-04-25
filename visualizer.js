@@ -1,0 +1,460 @@
+// visualizer.js
+// Reads ScoresCurrent from data/stocks.xlsx and generates data/report.html
+// Usage:
+//   node visualizer.js           → writes data/report.html
+//   node visualizer.js --serve   → writes + opens in browser via local server
+
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import http from "http";
+import { exec } from "child_process";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+const OUTPUT_PATH = path.resolve(__dirname, "data/report.html");
+const SERVE = process.argv.includes("--serve");
+
+// ── 1. Read ScoresCurrent from Excel ──────────────────────────────────────────
+
+async function readScores() {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(WORKBOOK_PATH);
+
+  const sheet = workbook.getWorksheet("ScoresCurrent");
+  if (!sheet) throw new Error("ScoresCurrent sheet not found. Run `npm start` first.");
+
+  const headers = [];
+  const rows = [];
+
+  sheet.eachRow((row, rowNumber) => {
+    const values = row.values.slice(1); // exceljs uses 1-based index; slice off index 0
+    if (rowNumber === 1) {
+      headers.push(...values.map(String));
+    } else {
+      const obj = {};
+      headers.forEach((h, i) => {
+        const v = values[i];
+        obj[h] = v === null || v === undefined ? null : typeof v === "object" ? Number(v) : v;
+      });
+      if (obj["Ticker"]) rows.push(obj);
+    }
+  });
+
+  return { headers, rows };
+}
+
+// ── 2. Build self-contained HTML ──────────────────────────────────────────────
+
+function buildHtml(headers, rows) {
+  const jsonData = JSON.stringify(rows);
+  const jsonHeaders = JSON.stringify(headers);
+
+  const scoreColor = (s) => {
+    if (s >= 70) return "#4caf50";
+    if (s >= 50) return "#2196f3";
+    if (s >= 30) return "#ff9800";
+    return "#f44336";
+  };
+
+  const html = /* html */ `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stocks Analytics Report — ${new Date().toLocaleDateString()}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; }
+  h1 { padding: 1.5rem 2rem 0.5rem; font-size: 1.4rem; color: #fff; }
+  .subtitle { padding: 0 2rem 1.5rem; font-size: 0.85rem; color: #888; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0 2rem 2rem; }
+  .card { background: #1a1d27; border-radius: 10px; padding: 1.25rem; }
+  .card h2 { font-size: 0.95rem; color: #aaa; margin-bottom: 1rem; }
+  .card.full { grid-column: 1 / -1; }
+  canvas { max-height: 360px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; max-height: 480px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+  thead th {
+    position: sticky; top: 0; background: #23263a; color: #bbb;
+    padding: 0.5rem 0.75rem; text-align: right; cursor: pointer; user-select: none;
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  thead th:hover { color: #fff; }
+  tbody tr:nth-child(even) { background: #1e2130; }
+  tbody tr:hover { background: #272b3e; }
+  td { padding: 0.4rem 0.75rem; text-align: right; white-space: nowrap; }
+  td:first-child { text-align: left; font-weight: 600; }
+  .pill {
+    display: inline-block; padding: 0.15rem 0.5rem;
+    border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: #fff;
+  }
+  .delta-pos { color: #4caf50; }
+  .delta-neg { color: #f44336; }
+  .delta-null { color: #555; }
+
+  /* Search */
+  .search-wrap { padding: 0 2rem 1rem; }
+  input[type=search] {
+    background: #1a1d27; border: 1px solid #333; border-radius: 6px;
+    color: #e0e0e0; padding: 0.45rem 0.9rem; font-size: 0.85rem; width: 240px;
+    outline: none;
+  }
+  input[type=search]:focus { border-color: #555; }
+
+  /* Ticker Card Grid */
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+  .section-header h2 { font-size: 1rem; color: #aaa; }
+  .tier-legend { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .legend-pill { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid; color: #ccc; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; padding: 0 2rem 2rem; }
+  .ticker-card {
+    border-radius: 10px; padding: 0.9rem 1rem; border: 1px solid transparent;
+    display: flex; flex-direction: column; gap: 0.3rem; transition: transform 0.15s, border-color 0.15s;
+  }
+  .ticker-card:hover { transform: translateY(-2px); border-color: #ffffff22 !important; }
+  .tc-ticker { font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.03em; }
+  .tc-score  { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .tc-delta  { font-size: 0.78rem; font-weight: 600; }
+  .tc-label  { font-size: 0.68rem; color: #999; margin-top: 0.2rem; }
+
+  /* Upcoming Earnings */
+  .earnings-section { padding: 0 2rem 2rem; }
+  .earnings-section h2 { font-size: 1rem; color: #aaa; margin-bottom: 0.75rem; }
+  .earnings-empty { color: #555; font-size: 0.85rem; padding: 0.5rem 0; }
+  .earnings-strip { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .earnings-card {
+    background: #1a1d27; border: 1px solid #f59e0b55; border-radius: 10px;
+    padding: 0.75rem 1rem; min-width: 130px;
+    display: flex; flex-direction: column; gap: 0.25rem;
+  }
+  .ec-ticker { font-size: 0.85rem; font-weight: 700; color: #fff; }
+  .ec-date   { font-size: 0.8rem; color: #f59e0b; font-weight: 600; }
+  .ec-days   { font-size: 0.7rem; color: #888; }
+  .ec-score  { font-size: 0.7rem; margin-top: 0.15rem; }
+</style>
+</head>
+<body>
+
+<h1>Stocks Analytics Report</h1>
+
+<p style="opacity:0.6;font-size:0.7rem">
+  Last build (UTC): ${new Date().toISOString()}
+</p>
+<p>BUILD ID: ${Date.now()}</p>
+<p class="subtitle">Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; ${rows.length} tickers</p>
+
+<!-- Ticker Card Grid -->
+<div class="section-header">
+  <h2>Composite Score — Universe Ranking</h2>
+  <div class="tier-legend">
+    <span class="legend-pill" style="background:#0d2218;border-color:#4caf50">&ge; 70 &nbsp;Strong Buy</span>
+    <span class="legend-pill" style="background:#0d1a2e;border-color:#2196f3">50 &ndash; 70 &nbsp;Monitor</span>
+    <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
+    <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
+  </div>
+</div>
+<div class="card-grid" id="cardGrid"></div>
+
+<!-- Upcoming Earnings (next 7 days) -->
+<div class="earnings-section">
+  <h2>&#128197; Upcoming Earnings &mdash; Next 7 Days</h2>
+  <div class="earnings-strip" id="earningsStrip"></div>
+</div>
+
+<div class="grid">
+
+  <!-- Alpha vs RSI Scatter -->
+  <div class="card">
+    <h2>Jensen's Alpha (63D) vs RSI-14</h2>
+    <canvas id="scatterChart"></canvas>
+  </div>
+
+  <!-- MA Slope vs Composite -->
+  <div class="card">
+    <h2>MA Slope (50D) vs Composite Score</h2>
+    <canvas id="slopeChart"></canvas>
+  </div>
+
+</div>
+
+<!-- Data Table -->
+<div class="search-wrap">
+  <input type="search" id="filterInput" placeholder="Filter by ticker…" />
+</div>
+<div class="card full" style="margin: 0 2rem 2rem; overflow:hidden;">
+  <h2>Full Data Table <span id="rowCount" style="color:#555;font-weight:normal"></span></h2>
+  <div class="table-wrap">
+    <table id="dataTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const HEADERS = ${jsonHeaders};
+const ROWS    = ${jsonData};
+
+// ── Colour helpers ────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 70) return "#4caf50";
+  if (s >= 50) return "#2196f3";
+  if (s >= 30) return "#ff9800";
+  return "#f44336";
+}
+function scoreLabel(s) {
+  if (s >= 70) return "Strong Buy";
+  if (s >= 50) return "Monitor";
+  if (s >= 30) return "Weak";
+  return "Reduce";
+}
+function fmt(v, decimals = 2) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "boolean") return v ? "✓" : "✗";
+  return typeof v === "number" ? v.toFixed(decimals) : v;
+}
+
+// ── 1. Ticker Card Grid — sorted descending by Composite_Score ───────────────
+const TIERS = [
+  { min: 70, bg: "#0d2218", border: "#4caf5055", scoreColor: "#4caf50", label: "Strong Buy" },
+  { min: 50, bg: "#0d1a2e", border: "#2196f355", scoreColor: "#2196f3", label: "Monitor"    },
+  { min: 30, bg: "#2a1a0a", border: "#ff980055", scoreColor: "#ff9800", label: "Weak"       },
+  { min:  0, bg: "#2a0d0d", border: "#f4433655", scoreColor: "#f44336", label: "Reduce"     },
+];
+function getTier(s) { return TIERS.find(t => (s ?? 0) >= t.min) ?? TIERS[TIERS.length - 1]; }
+
+const sortedCards = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+const cardGrid = document.getElementById("cardGrid");
+
+sortedCards.forEach(r => {
+  const score = r.Composite_Score;
+  const delta = r.Daily_Composite_Score_delta;
+  const tier  = getTier(score);
+
+  const deltaHtml = delta === null || delta === undefined
+    ? '<span style="color:#555">\u2014</span>'
+    : delta >= 0
+      ? \`<span style="color:#4caf50">\u25b2 +\${delta.toFixed(1)}</span>\`
+      : \`<span style="color:#f44336">\u25bc \${delta.toFixed(1)}</span>\`;
+
+  const card = document.createElement("div");
+  card.className = "ticker-card";
+  card.style.cssText = \`background:\${tier.bg};border-color:\${tier.border}\`;
+  card.innerHTML = \`
+    <div class="tc-ticker">\${r.Ticker}</div>
+    <div class="tc-score" style="color:\${tier.scoreColor}">\${score != null ? score.toFixed(1) : "\u2014"}</div>
+    <div class="tc-delta">\${deltaHtml}</div>
+    <div class="tc-label">\${tier.label}</div>
+  \`;
+  cardGrid.appendChild(card);
+});
+
+// ── 2. Scatter — Alpha vs RSI ─────────────────────────────────────────────────
+new Chart(document.getElementById("scatterChart"), {
+  type: "scatter",
+  data: {
+    datasets: [{
+      label: "Tickers",
+      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI_14Day, ticker: r.Ticker, score: r.Composite_Score })),
+      backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
+      pointRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const d = ctx.raw;
+            return \`\${d.ticker}  α=\${fmt(d.x)}  RSI=\${fmt(d.y)}  Score=\${fmt(d.score)}\`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: "Alpha (63D)", color: "#888" }, ticks: { color: "#888" }, grid: { color: "#ffffff0f" } },
+      y: { title: { display: true, text: "RSI-14", color: "#888" }, ticks: { color: "#888" }, grid: { color: "#ffffff0f" } }
+    }
+  }
+});
+
+// ── 3. Scatter — MA Slope vs Composite ───────────────────────────────────────
+new Chart(document.getElementById("slopeChart"), {
+  type: "scatter",
+  data: {
+    datasets: [{
+      label: "Tickers",
+      data: ROWS.map(r => ({ x: r.MA_Slope_50, y: r.Composite_Score, ticker: r.Ticker })),
+      backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
+      pointRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const d = ctx.raw;
+            return \`\${d.ticker}  slope=\${fmt(d.x)}  score=\${fmt(d.y)}\`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { title: { display: true, text: "MA Slope (50D)", color: "#888" }, ticks: { color: "#888" }, grid: { color: "#ffffff0f" } },
+      y: { title: { display: true, text: "Composite Score", color: "#888" }, ticks: { color: "#888" }, grid: { color: "#ffffff0f" }, min: 0, max: 100 }
+    }
+  }
+});
+
+// ── 4. Upcoming Earnings Card Strip ──────────────────────────────────────────
+const strip = document.getElementById("earningsStrip");
+const now   = new Date();
+now.setHours(0, 0, 0, 0);
+const in7   = new Date(now.getTime() + 7 * 86400000);
+
+const upcoming = ROWS
+  .filter(r => {
+    if (!r.Earnings_Date) return false;
+    const d = new Date(r.Earnings_Date);
+    return d >= now && d <= in7;
+  })
+  .sort((a, b) => new Date(a.Earnings_Date) - new Date(b.Earnings_Date));
+
+if (upcoming.length === 0) {
+  strip.innerHTML = '<span class="earnings-empty">No earnings announcements found in the next 7 days for tracked tickers.</span>';
+} else {
+  upcoming.forEach(r => {
+    const d      = new Date(r.Earnings_Date);
+    const diff   = Math.round((d - now) / 86400000);
+    const daysLbl = diff === 0 ? "Today" : diff === 1 ? "Tomorrow" : \`In \${diff} days\`;
+    const dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    const tier    = getTier(r.Composite_Score);
+    const card    = document.createElement("div");
+    card.className = "earnings-card";
+    card.innerHTML = \`
+      <div class="ec-ticker">\${r.Ticker}</div>
+      <div class="ec-date">\${dateStr}</div>
+      <div class="ec-days">\${daysLbl}</div>
+      <div class="ec-score" style="color:\${tier.scoreColor}">Score \${r.Composite_Score != null ? r.Composite_Score.toFixed(1) : "\u2014"} &middot; \${tier.label}</div>
+    \`;
+    strip.appendChild(card);
+  });
+}
+
+// ── 5. Data Table ─────────────────────────────────────────────────────────────
+const COLS = [
+  "Ticker", "Composite_Score", "Daily_Composite_Score_delta", "Earnings_Date",
+  "EPS_TTM", "EPS_Percentile_In_Universe", "EPS_Fwd_Grwth_Trnd",
+  "Alpha_63D", "Beta", "RSI_14Day", "SMA200_Dist_%",
+  "MA_Slope_50", "Vol Expansion", "Institutional_Accumulation_%",
+  "LastQRtr_InstActivity", "RS_vs_SP100"
+];
+
+const thead = document.getElementById("tableHead");
+const tbody = document.getElementById("tableBody");
+const rowCountEl = document.getElementById("rowCount");
+
+// Render header
+const tr = document.createElement("tr");
+COLS.forEach((col, ci) => {
+  const th = document.createElement("th");
+  th.textContent = col.replace(/_/g, " ");
+  th.dataset.col = col;
+  th.dataset.dir = "desc";
+  th.addEventListener("click", () => sortTable(col, th));
+  tr.appendChild(th);
+});
+thead.appendChild(tr);
+
+let currentRows = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+
+function renderTable(data) {
+  tbody.innerHTML = "";
+  rowCountEl.textContent = "(" + data.length + ")";
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    COLS.forEach((col, ci) => {
+      const td = document.createElement("td");
+      const val = row[col];
+      if (col === "Composite_Score") {
+        td.innerHTML = \`<span class="pill" style="background:\${scoreColor(val)}">\${fmt(val)} \${scoreLabel(val)}</span>\`;
+      } else if (col === "Daily_Composite_Score_delta") {
+        if (val === null || val === undefined) {
+          td.innerHTML = '<span class="delta-null">—</span>';
+        } else {
+          const cls = val >= 0 ? "delta-pos" : "delta-neg";
+          td.innerHTML = \`<span class="\${cls}">\${val >= 0 ? "+" : ""}\${fmt(val)}</span>\`;
+        }
+      } else if (col === "Vol Expansion") {
+        td.textContent = val ? "✓" : "✗";
+        td.style.color = val ? "#4caf50" : "#f44336";
+      } else {
+        td.textContent = fmt(val);
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function sortTable(col, thEl) {
+  const dir = thEl.dataset.dir === "desc" ? "asc" : "desc";
+  document.querySelectorAll("thead th").forEach(t => t.dataset.dir = "desc");
+  thEl.dataset.dir = dir;
+  currentRows.sort((a, b) => {
+    const av = a[col] ?? -Infinity;
+    const bv = b[col] ?? -Infinity;
+    return dir === "desc" ? bv - av : av - bv;
+  });
+  renderTable(currentRows);
+}
+
+// Filter
+document.getElementById("filterInput").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toUpperCase();
+  const filtered = q ? ROWS.filter(r => r.Ticker.toUpperCase().includes(q)) : [...ROWS];
+  currentRows = filtered;
+  renderTable(filtered);
+});
+
+renderTable(currentRows);
+<\/script>
+</body>
+</html>`;
+
+  return html;
+}
+
+// ── 3. Main ───────────────────────────────────────────────────────────────────
+
+const { headers, rows } = await readScores();
+const html = buildHtml(headers, rows);
+fs.writeFileSync(OUTPUT_PATH, html, "utf8");
+console.log(`✅ Report written → ${OUTPUT_PATH}  (${rows.length} tickers)`);
+
+if (SERVE) {
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(fs.readFileSync(OUTPUT_PATH));
+  });
+  server.listen(3000, "127.0.0.1", () => {
+    const url = "http://localhost:3000";
+    console.log(`🌐 Serving at ${url}`);
+    // Open in default browser (cross-platform)
+    const cmd = process.platform === "win32" ? `start ${url}`
+              : process.platform === "darwin" ? `open ${url}`
+              : `xdg-open ${url}`;
+    exec(cmd);
+  });
+}
