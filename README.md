@@ -290,7 +290,68 @@ npm run setup
 
 ---
 
-## Docker
+## Adding a New Ticker to the Report
+
+To include a new stock ticker in the final web report (available at [https://srijaipur.github.io/stocks-analytics-engine/index.html](https://srijaipur.github.io/stocks-analytics-engine/index.html)), follow these steps:
+
+### 1. Add the Ticker to Your Lists
+
+Edit `data/tickers.json` and add the new ticker symbol to either the `"portfolio"` or `"watchlist"` array. Ensure the ticker is valid and exists on major exchanges.
+
+Example:
+```json
+{
+  "portfolio": ["NVDA", "TSLA", "AAPL", "NEW_TICKER"],
+  "watchlist": ["VRT", "BE", "QS"]
+}
+```
+
+### 2. Sync the Excel Workbook
+
+Run the workbook creation script to update `data/stocks.xlsx` with the new ticker:
+
+```bash
+node scripts/createWorkbook.js
+```
+
+This ensures the Excel file reflects the latest changes from `tickers.json`.
+
+### 3. Run the Analytics Engine
+
+Execute the main analytics pipeline to fetch market data and compute scores for all tickers, including the new one:
+
+```bash
+npm start
+```
+
+This step may take several minutes as it fetches data from Finviz, Yahoo Finance, and NASDAQ APIs for each ticker.
+
+### 4. Generate the Updated Report
+
+Create the HTML report from the computed scores:
+
+```bash
+npm run visualize
+```
+
+This generates `data/report.html` with the new ticker included in the score cards, charts, and data table.
+
+### 5. Publish the Report (GitHub Pages)
+
+If you're using GitHub Pages to host the report:
+
+1. Commit the updated `data/report.html` (and any other changes) to your repository.
+2. Push to the `main` branch.
+3. The report will automatically update at [https://srijaipur.github.io/stocks-analytics-engine/index.html](https://srijaipur.github.io/stocks-analytics-engine/index.html) (assuming GitHub Actions or manual deployment is configured).
+
+### Notes
+
+- Invalid or delisted tickers will cause errors during data fetching. Verify the ticker exists before adding.
+- The report only includes tickers that have successfully been processed and scored.
+- For bulk additions, you can add multiple tickers at once and follow the same steps.
+- If you encounter issues, run `npm run clean-workbook` to regenerate the Excel file from scratch.
+
+---
 
 Build the image:
 
