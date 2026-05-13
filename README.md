@@ -223,14 +223,10 @@ node scripts/createWorkbook.js
 If the Excel file contains invalid or test tickers causing request failures, regenerate it fresh from `tickers.json`:
 
 ```bash
-# Via npm script
 npm run clean-workbook
-
-# Or directly
-node scripts/cleanWorkbook.js
 ```
 
-This removes the existing `data/stocks.xlsx` and creates a fresh copy with only valid tickers from `tickers.json`.
+This runs `scripts/cleanWorkbook.js` and recreates `data/stocks.xlsx` from `tickers.json`, removing invalid or stale ticker entries.
 
 ---
 
@@ -238,7 +234,7 @@ This removes the existing `data/stocks.xlsx` and creates a fresh copy with only 
 
 ### Run the analytics engine
 
-Fetches data for all tickers across all sheets, computes composite scores, and writes results to `data/stocks.xlsx`:
+Fetches data for all tickers across all sheets, computes composite scores, writes results to `data/stocks.xlsx`, and then generates the HTML report via `visualizer.js`:
 
 ```bash
 npm start
