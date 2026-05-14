@@ -24,7 +24,7 @@ jobs:
       - name: Debug tickers.json
         run: |
          echo "Checking tickers.json..."
-        cat data/tickers.json || echo "tickers.json missing"
+         cat data/tickers.json || echo "tickers.json missing"
 
 
       - name: Seed workbook
