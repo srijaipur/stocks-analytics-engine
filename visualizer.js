@@ -1,17 +1,66 @@
-// ✅ ONLY SHOWING UPDATED CORE UI SECTION
-// keep your readData() FUNCTION SAME from previous response
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import http from "http";
 
-function buildHtml(headers, rows, signals) {
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+const OUTPUT_PATH = path.resolve(__dirname, "data/report.html");
+const SERVE = process.argv.includes("--serve");
 
-const data = JSON.stringify(rows);
-const signalsData = JSON.stringify(signals);
+// ✅ READ DATA
+async function readData() {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(WORKBOOK_PATH);
 
-return `
+  const sheet = workbook.getWorksheet("ScoresCurrent");
+  const rows = [];
+
+  const headers = [];
+
+  sheet.eachRow((row, i) => {
+    const values = row.values.slice(1);
+
+    if (i === 1) {
+      headers.push(...values);
+    } else {
+      const obj = {};
+      headers.forEach((h, idx) => {
+        obj[h] = values[idx];
+      });
+      if (obj.Ticker) rows.push(obj);
+    }
+  });
+
+  // ✅ Read signals
+  const signalsSheet = workbook.getWorksheet("SignalsTriggered");
+  const signals = [];
+
+  if (signalsSheet) {
+    signalsSheet.eachRow((row, i) => {
+      if (i === 1) return;
+      signals.push({
+        ticker: row.getCell(1).value,
+        score: row.getCell(2).value,
+        triggers: row.getCell(3).value,
+      });
+    });
+  }
+
+  return { rows, signals };
+}
+
+// ✅ BUILD UI
+function buildHtml(rows, signals) {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Analytics Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body { font-family:sans-serif; background:#0f1117; color:#ddd; }
@@ -43,7 +92,6 @@ body { font-family:sans-serif; background:#0f1117; color:#ddd; }
 }
 
 .search { margin:10px; }
-
 </style>
 </head>
 
@@ -52,47 +100,46 @@ body { font-family:sans-serif; background:#0f1117; color:#ddd; }
 <h1>Stock Analytics Dashboard</h1>
 
 <div class="tabs">
-  <div class="tab-btn active" onclick="showTab('portfolio')">Portfolio</div>
-  <div class="tab-btn" onclick="showTab('signals')">Signals</div>
-  <div class="tab-btn" onclick="showTab('trends')">Trends</div>
+  <div class="tab-btn active" onclick="showTab(event,'portfolio')">Portfolio</div>
+  <div class="tab-btn" onclick="showTab(event,'signals')">Signals</div>
+  <div class="tab-btn" onclick="showTab(event,'trends')">Trends</div>
 </div>
 
-<!-- ✅ PORTFOLIO -->
+<!-- PORTFOLIO -->
 <div id="portfolio" class="tab-content active">
   <input class="search" placeholder="Filter..." oninput="filterCards(this.value)" />
   <div id="cards"></div>
 </div>
 
-<!-- ✅ SIGNALS -->
+<!-- SIGNALS -->
 <div id="signals" class="tab-content">
   <div id="signalsList"></div>
 </div>
 
-<!-- ✅ TRENDS -->
+<!-- TRENDS -->
 <div id="trends" class="tab-content">
   <canvas id="chart"></canvas>
 </div>
 
 <script>
 
-const rows = ${data};
-const signals = ${signalsData};
+const rows = ${JSON.stringify(rows)};
+const signals = ${JSON.stringify(signals)};
 
-// ✅ TAB CONTROLLER
-function showTab(tab) {
+// TAB HANDLER
+function showTab(evt, tab) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
 
   document.getElementById(tab).classList.add('active');
-  event.target.classList.add('active');
+  evt.target.classList.add('active');
 }
 
-// ✅ SORT BY NEW SCORE
-rows.sort((a,b)=>b.New_Score - a.New_Score);
+// SORT BY NEW SCORE
+rows.sort((a,b)=>b.New_Score-a.New_Score);
 
 const container = document.getElementById("cards");
 
-// ✅ RENDER CARDS
 function renderCards(data){
   container.innerHTML = "";
   data.forEach(r=>{
@@ -100,30 +147,34 @@ function renderCards(data){
     div.className="card";
     div.innerHTML =
       "<b>"+r.Ticker+"</b><br/>"+
-      "Score: "+r.New_Score.toFixed(1)+"<br/>"+
+      "Score: "+(r.New_Score?.toFixed(1)||"-")+"<br/>"+
       "RS Rank: "+(r.RS_Rank ?? "-");
     container.appendChild(div);
   });
 }
+
 renderCards(rows);
 
-// ✅ FILTER
+// FILTER
 function filterCards(q){
   const filtered = rows.filter(r => r.Ticker.toLowerCase().includes(q.toLowerCase()));
   renderCards(filtered);
 }
 
-// ✅ SIGNALS VIEW
+// SIGNALS
 const sDiv = document.getElementById("signalsList");
 
 signals.forEach(s=>{
   const el = document.createElement("div");
   el.className="card";
-  el.innerHTML = "<b>"+s.ticker+"</b><br/>Score: "+s.score+"<br/>"+s.triggers;
+  el.innerHTML =
+    "<b>"+s.ticker+"</b><br/>"+
+    "Score: "+s.score+"<br/>"+
+    s.triggers;
   sDiv.appendChild(el);
 });
 
-// ✅ SIMPLE TREND CHART
+// CHART
 new Chart(document.getElementById("chart"),{
   type:"scatter",
   data:{
@@ -135,7 +186,26 @@ new Chart(document.getElementById("chart"),{
 });
 
 </script>
+
 </body>
 </html>
 `;
 }
+
+// ✅ MAIN
+(async () => {
+  const { rows, signals } = await readData();
+
+  const html = buildHtml(rows, signals);
+  fs.writeFileSync(OUTPUT_PATH, html);
+
+  console.log("✅ Report generated");
+
+  if (SERVE) {
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(html);
+    });
+
+    server.listen(3000, "0.0.0.0", () => {
+      console.log("✅ Server running on port 3000");
