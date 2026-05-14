@@ -21,6 +21,20 @@ export function relativeStrength(stock, market) {
   return stockReturn - marketReturn;
 }
 
+// ✅ NEW: Computes % return over a given lookback period.
+// Example: period=63 → ~3 months, period=21 → ~1 month.
+// Returns percentage value (e.g., 25 means +25%).
+export function getReturn(prices, period) {
+  if (!prices || prices.length < period + 1) return null;
+
+  const start = prices[prices.length - (period + 1)]?.close;
+  const end = prices[prices.length - 1]?.close;
+
+  if (!start || !end || start === 0) return null;
+
+  return ((end - start) / start) * 100;
+}
+
 // Computes the slope of the period-day simple moving average over the last
 // slopeDays candles, normalised by the MA value so it is unit-independent.
 // A positive value means the MA is rising; negative means falling.
@@ -28,34 +42,3 @@ export function relativeStrength(stock, market) {
 export function maSlope(prices, period = 50, slopeDays = 5) {
   if (prices.length < period + slopeDays) return 0;
 
-  const ma = (slice) => slice.reduce((sum, p) => sum + p.close, 0) / slice.length;
-
-  const end = prices.length;
-  const maRecent = ma(prices.slice(end - period, end));
-  const maPrev = ma(prices.slice(end - period - slopeDays, end - slopeDays));
-
-  if (maPrev === 0) return 0;
-  return (maRecent - maPrev) / maPrev;
-}
-
-// Returns true when the average volume of the last shortWindow candles is
-// greater than the average of the prior longWindow candles by at least
-// the expansionThreshold ratio (default 20% above the baseline).
-// prices: [{ close, volume }, ...] sorted oldest-first.
-export function volumeExpansion(
-  prices,
-  shortWindow = 5,
-  longWindow = 20,
-  expansionThreshold = 1.2
-) {
-  if (prices.length < longWindow + shortWindow) return false;
-
-  const end = prices.length;
-  const avg = (slice) => slice.reduce((sum, p) => sum + p.volume, 0) / slice.length;
-
-  const recentAvg = avg(prices.slice(end - shortWindow, end));
-  const baselineAvg = avg(prices.slice(end - longWindow - shortWindow, end - shortWindow));
-
-  if (baselineAvg === 0) return false;
-  return recentAvg / baselineAvg >= expansionThreshold;
-}
