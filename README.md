@@ -401,3 +401,10 @@ Create a `.env` file in the project root if needed (currently loaded via `dotenv
 ```
 
 The workbook path (`data/stocks.xlsx`) is the only persistent state. All sheets must exist before running `npm start` — use `scripts/createWorkbook.js` to initialize them.
+
+## Sanity Check Table
+Output                    |    Meaning
+positive return63         |    bullish
+negative return63         |    bearish
+null                      |    not enough history (OK)
+extreme (>200%)           |    probably data issue
