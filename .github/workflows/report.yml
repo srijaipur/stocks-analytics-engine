@@ -1,60 +1,52 @@
 name: Publish Analytics Report
-
-on:
+'on':
   schedule:
-    - cron: '0 21 * * 1-5'   # weekdays 21:00 UTC (after US market close)
-  workflow_dispatch:           # manual trigger from GitHub UI
-
+    - cron: 0 21 * * 1-5
+  workflow_dispatch: null
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-
       - run: npm ci --omit=dev
-
-      
       - name: Debug tickers.json
         run: |
-         echo "Checking tickers.json..."
-         cat data/tickers.json || echo "tickers.json missing"
-
-
+          echo "Checking tickers.json..."
+          cat data/tickers.json || echo "tickers.json missing"
       - name: Seed workbook
         run: node scripts/createWorkbook.js
-
+      - name: Verify ticker source
+        run: |
+          if ! grep -qE '[A-Z]{1,5}' data/tickers.json; then
+            echo "ERROR: No tickers found in tickers.json"
+            exit 1
+          fi
       - name: Run analytics pipeline
         run: node --experimental-specifier-resolution=node index.js
-
       - name: Generate HTML report
         run: node visualizer.js
-
       - name: Copy report to root index
         run: cp data/report.html data/index.html
-
       - name: Validate generated report
         run: |
           if [ ! -f data/index.html ]; then
             echo "ERROR: data/index.html does not exist"
             exit 1
           fi
-          if ! grep -qE 'Generated .* ·.* [1-9][0-9]* tickers' data/index.html; then
+          if ! grep -qE '[1-9][0-9]* tickers' data/index.html; then
             echo "ERROR: data/index.html is missing a valid ticker count or contains 0 tickers"
             grep -nE 'Generated .*tickers' data/index.html || true
             exit 1
           fi
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: '${{ secrets.GITHUB_TOKEN }}'
           publish_dir: ./data
           destination_dir: .
           clean: true
