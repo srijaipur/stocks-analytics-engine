@@ -4,6 +4,7 @@ import { writeScores } from "./sheets/writeSheet.js";
 import { getFundamentals } from "./data/fundamentals.js";
 import { getPrices } from "./data/prices.js";
 import { getInstitutionalActivity } from "./data/institutions.js";
+
 import {
   fundamentalLevel,
   fundamentalTrend,
@@ -11,9 +12,17 @@ import {
   getBeta,
   getRsi14,
   getSma200Dist,
-  getEarningsDate,
+  getEarningsDate
 } from "./factors/fundamentals.js";
-import { maSlope, volumeExpansion, relativeStrength, jensensAlpha } from "./factors/technicals.js";
+
+import {
+  jensensAlpha,
+  relativeStrength,
+  maSlope,
+  volumeExpansion,
+  getReturn
+} from "./factors/technicals.js";
+
 import { percentileRank } from "./factors/normalize.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -26,7 +35,9 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
       const status = err?.response?.status;
       const isLast = attempt === maxRetries;
       if (isLast) throw err;
+
       let delayMs = baseDelayMs * Math.pow(2, attempt - 1);
+
       if (status === 429) {
         const retryAfter = Number(err.response?.headers?.["retry-after"]);
         if (retryAfter > 0) delayMs = retryAfter * 1000;
@@ -36,6 +47,7 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
           `  ⏳ Request failed (${status ?? err.code}). Retry ${attempt}/${maxRetries} in ${(delayMs / 1000).toFixed(1)}s...`
         );
       }
+
       await sleep(delayMs);
     }
   }
@@ -53,28 +65,29 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
     ...new Set([...portfolio, ...watchlist, ...rut2000, ...dowJones, ...nasdaq, ...sp100]),
   ];
 
-  // Fetch S&P 100 benchmark prices once, shared across all tickers
   const sp100Prices = await getPrices("^OEX");
 
   console.log(
     `\n📋 Universe: ${universe.length} unique tickers (${portfolio.length} portfolio, ${watchlist.length} watchlist, ${rut2000.length + dowJones.length + nasdaq.length + sp100.length} index)\n`
   );
 
-  // First pass: fetch all data sequentially to avoid Finviz 429 rate-limits
   const data = [];
   const skipped = [];
+
   for (let i = 0; i < universe.length; i++) {
     const ticker = universe[i];
     process.stdout.write(`  [${i + 1}/${universe.length}] ${ticker}... `);
+
     try {
       const fundamentals = await withRetry(() => getFundamentals(ticker));
       const [prices, institutions] = await Promise.all([
         getPrices(ticker),
         getInstitutionalActivity(ticker),
       ]);
+
       data.push({ ticker, fundamentals, prices, institutions });
       console.log("✓");
-      await sleep(1200); // only delay after successful fetch
+      await sleep(1200);
     } catch (err) {
       console.log(`✗ SKIPPED — ${err.message}`);
       skipped.push({ ticker, reason: err.message });
@@ -94,14 +107,20 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
     console.warn("");
   }
 
-  // Collect all values needed for cross-universe percentile ranking
+  // Collect values for normalization
   const allLevels = data.map(({ fundamentals }) => fundamentalLevel(fundamentals));
   const allTrends = data.map(({ fundamentals }) => fundamentalTrend(fundamentals));
   const allSlopes = data.map(({ prices }) => maSlope(prices, 50));
   const allRsi = data.map(({ fundamentals }) => getRsi14(fundamentals));
   const allSma200 = data.map(({ fundamentals }) => getSma200Dist(fundamentals));
 
-  // Second pass: compute factors and build rows
+  // ✅ NEW: Momentum arrays (for future scoring)
+  const allReturn63 = data.map(({ prices }) => getReturn(prices, 63));
+  const allRelativeStrength = data.map(({ prices }) =>
+    relativeStrength(prices, sp100Prices)
+  );
+
+  // Second pass
   const rows = data.map(({ ticker, fundamentals, prices, institutions }) => {
     const level = fundamentalLevel(fundamentals);
     const epsPercentile = percentileRank(level, allLevels);
@@ -117,8 +136,15 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
     const alpha = jensensAlpha(prices, sp100Prices, beta);
     const earningsDate = getEarningsDate(fundamentals);
 
-    // Composite Score (0–100) — Option B:
-    // 30% P(EPS_Percentile_In_Universe) + 30% P(EPS_Fwd_Growth) + 20% P(MA_Slope_50) + 10% P(RSI_14) + 10% P(SMA200_Dist)
+    // ✅ NEW: Momentum signals (NOT used yet)
+    const return63 = getReturn(prices, 63);
+    const return21 = getReturn(prices, 21);
+
+    // ✅ DEBUG (Sentinel check)
+    if (Math.random() < 0.02) {
+      console.log(`Momentum check: ${ticker}`, { return63, return21 });
+    }
+
     const compositeScore =
       0.3 * epsPercentile +
       0.3 * percentileRank(trend, allTrends) +
@@ -146,7 +172,8 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
   });
 
   await writeScores(rows);
+
   console.log(
-    `✅ Done — ${rows.length} tickers written to ScoresCurrent${skipped.length > 0 ? `, ${skipped.length} skipped (see warnings above)` : ""}.`
+    `✅ Done — ${rows.length} tickers written to ScoresCurrent${skipped.length > 0 ? `, ${skipped.length} skipped` : ""}.`
   );
 })();
