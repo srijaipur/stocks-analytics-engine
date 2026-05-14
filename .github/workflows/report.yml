@@ -20,6 +20,13 @@ jobs:
 
       - run: npm ci --omit=dev
 
+      
+      - name: Debug tickers.json
+        run: |
+         echo "Checking tickers.json..."
+        cat data/tickers.json || echo "tickers.json missing"
+
+
       - name: Seed workbook
         run: node scripts/createWorkbook.js
 
