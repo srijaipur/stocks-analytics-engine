@@ -32,6 +32,18 @@ jobs:
       - name: Copy report to root index
         run: cp data/report.html data/index.html
 
+      - name: Validate generated report
+        run: |
+          if [ ! -f data/index.html ]; then
+            echo "ERROR: data/index.html does not exist"
+            exit 1
+          fi
+          if ! grep -qE 'Generated .* ·.* [1-9][0-9]* tickers' data/index.html; then
+            echo "ERROR: data/index.html is missing a valid ticker count or contains 0 tickers"
+            grep -nE 'Generated .*tickers' data/index.html || true
+            exit 1
+          fi
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
