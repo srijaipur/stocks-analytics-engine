@@ -1,0 +1,68 @@
+name: Nightly Build & Publish Stocks Analytics Report
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    # Runs every day at 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout main branch
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Generate report (CI-safe)
+      - name: Generate report
+        run: |
+          node visualizer.js
+          ls -lh data/report.html
+
+      # 5. Stash report artifact
+      - name: Stash report artifact
+        run: |
+          mkdir -p /tmp/report
+          cp data/report.html /tmp/report/report.html
+
+      # 6. Switch to gh-pages branch
+      - name: Checkout gh-pages branch
+        run: |
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+      # 7. Clean gh-pages root
+      - name: Clean gh-pages root
+        run: |
+          find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} +
+
+      # 8. Publish report
+      - name: Publish report
+        run: |
+          cp /tmp/report/report.html index.html
+
+      # 9. Commit and push
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add index.html
+          git commit -m "Nightly publish analytics report" || echo "No changes to commit"
+          git push origin gh-pages --force
