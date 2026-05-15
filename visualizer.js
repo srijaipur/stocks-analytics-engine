@@ -70,6 +70,7 @@ function buildHtml(headers, rows) {
   body { font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; }
   h1 { padding: 1.5rem 2rem 0.5rem; font-size: 1.4rem; color: #fff; }
   .subtitle { padding: 0 2rem 1.5rem; font-size: 0.85rem; color: #888; }
+  .external-link { color: #00bcd4; text-decoration: underline; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0 2rem 2rem; }
   .card { background: #1a1d27; border-radius: 10px; padding: 1.25rem; }
   .card h2 { font-size: 0.95rem; color: #aaa; margin-bottom: 1rem; }
@@ -148,6 +149,7 @@ function buildHtml(headers, rows) {
 </p>
 <p>BUILD ID: ${Date.now()}</p>
 <p class="subtitle">Generated ${new Date().toLocaleString()} &nbsp;·&nbsp; ${rows.length} tickers</p>
+<p class="subtitle"><a class="external-link" href="analytics.html">Open analytics dashboard</a></p>
 
 <!-- Ticker Card Grid -->
 <div class="section-header">
