@@ -23,8 +23,29 @@ async function readData() {
     const vals = row.values.slice(1);
     if (i === 1) headers.push(...vals);
     else {
-      const obj = {};
-      headers.forEach((h, j) => (obj[h] = vals[j]));
+    
+      const obj = {
+  Ticker: vals[0],
+  EPS_TTM: vals[1],
+  EPS_Percentile: vals[2],
+  EPS_Growth: vals[3],
+  Inst_Accumulation: vals[4],
+  Alpha_63D: vals[5],
+  Beta: vals[6],
+  RSI: vals[7],
+  SMA200_Dist: vals[8],
+  MA_Slope: vals[9],
+  Volume_Expansion: vals[10],
+  Net_Inst: vals[11],
+  RS_vs_SP100: vals[12],
+  Return_63D: vals[13],
+  RS_Rank: vals[14],
+  Drawdown_pct: vals[15],
+  Old_Score: vals[16],
+  New_Score: vals[17],
+  Earnings_Date: vals[18],
+  Delta: vals[19],
+};
       if (obj.Ticker) rows.push(obj);
     }
   });
@@ -58,7 +79,6 @@ async function readData() {
 
 // ---------- UI ----------
 function buildHtml(data) {
-
 const safe = JSON.stringify(data).replace(/</g, "\\u003c");
 
 return `
@@ -123,10 +143,10 @@ body { background:#0f1117; color:#ddd; font-family:sans-serif }
 
 <!-- ✅ ANALYTICS -->
 <div id="analytics">
-<h3>📊 Portfolio</h3>
+<h3>📊 Portfolio Structural Strength</h3>
 <div id="pf" class="grid"></div>
 
-<h3>👀 Watchlist</h3>
+<h3>👀 Watchlist Structural Strength</h3>
 <div id="wl" class="grid"></div>
 </div>
 
@@ -175,10 +195,10 @@ const signals = data.signals;
 
 // ---------- HELPERS ----------
 function tier(score){
- if(score>=80) return "Strong Buy";
- if(score>=60) return "Monitor";
- if(score>=40) return "Weak";
- return "Reduce";
+ if(score >= 80) return "High Strength";
+ if(score >= 60) return "Constructive";
+ if(score >= 40) return "Mixed";
+ return "Weak Structure";
 }
 
 function color(score){
@@ -194,12 +214,19 @@ function delta(v){
 
 // ---------- ANALYTICS ----------
 function card(r){
- return "<div class='card "+color(r.New_Score)+"'>" +
-  "<b>"+r.Ticker+"</b><br>" +
-  "<div class='score'>"+Number(r.New_Score).toFixed(1)+"</div>" +
-  delta(r.Delta)+"<br>" +
-  "<span class='small'>"+tier(r.New_Score)+"</span>" +
- "</div>";
+
+  const score = Number(r.New_Score);
+  const safeScore = isNaN(score) ? 0 : score;
+
+  const deltaVal = Number(r.Delta);
+  const safeDelta = isNaN(deltaVal) ? null : deltaVal;
+
+  return "<div class='card "+color(safeScore)+"'>" +
+    "<b>"+r.Ticker+"</b><br>" +
+    "<div class='score'>"+safeScore.toFixed(1)+"</div>" +
+    delta(safeDelta)+"<br>" +
+    "<span class='small'>"+tier(safeScore)+"</span>" +
+  "</div>";
 }
 
 document.getElementById("pf").innerHTML =
