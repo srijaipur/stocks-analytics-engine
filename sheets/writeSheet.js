@@ -20,9 +20,9 @@ export async function writeScores(rows, signals) {
     "Inst_Accumulation",
     "Alpha_63D",
     "Beta",
-    "RSI",
+    "RSI_14Day",
     "SMA200_Dist",
-    "MA_Slope",
+    "MA_Slope_50",
     "Volume_Expansion",
     "Net_Inst",
 
@@ -31,11 +31,10 @@ export async function writeScores(rows, signals) {
     "RS_Rank",
     "Drawdown_%",
 
-    "Old_Score",
-    "New_Score",
-
+    "Composite_Score",
+    "New_Composite_Score",
     "Earnings_Date",
-    "Delta",
+    "Daily_Composite_Score_delta",
   ];
 
   const today = new Date().toISOString().slice(0, 10);

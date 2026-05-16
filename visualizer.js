@@ -111,8 +111,18 @@ function buildHtml(headers, rows) {
   .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
   .section-header h2 { font-size: 1rem; color: #aaa; }
   .tier-legend { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .legend-pill { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; border: 1px solid; color: #ccc; }
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; padding: 0 2rem 2rem; }
+  .legend-pill { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius:
+   999px; border: 1px solid; color: #ccc; }
+  .analytics-link {  font-size: 0.78rem;  padding: 0.35rem 0.8rem; 
+  border-radius: 999px; border: 1px solid #2196f355; background:
+   #0d1a2e; color: #90caf9; text-decoration: none; font-weight: 
+   600; transition: all 0.15s ease;
+   }
+  .analytics-link:hover {  background: #13233d; border-color: #64b5f6;}
+  .card-grid { display: grid; grid-template-columns: 
+  repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; 
+  padding: 0 2rem 2rem; 
+  }
   .ticker-card {
     border-radius: 10px; padding: 0.9rem 1rem; border: 1px solid transparent;
     display: flex; flex-direction: column; gap: 0.3rem; transition: transform 0.15s, border-color 0.15s;
@@ -158,6 +168,9 @@ function buildHtml(headers, rows) {
     <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
     <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
   </div>
+  <a class="analytics-link" href="analytics.html">
+  Advanced Anlytical Signals →
+</a>
 </div>
 <div class="card-grid" id="cardGrid"></div>
 

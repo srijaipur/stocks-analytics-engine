@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js && node visualizer.js",
+    "analytics": "node visualizer-analytics.js",
+    "analytics:serve": "node visualizer-analytics.js --serve",
     "screen-rut": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js rut",
     "screen-dji": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js dji",
     "screen-ndx": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js ndx",

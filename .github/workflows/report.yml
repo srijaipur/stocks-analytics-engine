@@ -30,6 +30,8 @@ jobs:
         run: node --experimental-specifier-resolution=node index.js
       - name: Generate HTML report
         run: node visualizer.js
+      - name: Generate analytics report
+        run: node visualizer-analytics.js
       - name: Copy report to root index
         run: cp data/report.html data/index.html
       - name: Validate generated report
