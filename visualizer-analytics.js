@@ -189,6 +189,31 @@ body { background:#0f1117; color:#ddd; font-family:sans-serif }
 
 const data = ${safe};
 const rows = data.rows;
+// ---------- SCHEMA NORMALIZATION ----------
+rows.forEach(function(r){
+
+  // numeric normalization
+  r.New_Score = Number(r.New_Score ?? r.Composite_Score ?? 0);
+
+  r.Delta = Number(
+    r.Delta ??
+    r.Daily_Composite_Score_delta ??
+    0
+  );
+
+  r.MA_Slope = Number(
+    r.MA_Slope ??
+    r.MA_Slope_50 ??
+    0
+  );
+
+  r.Drawdown_pct = Number(
+    r["Drawdown_%"] ??
+    r.Drawdown_pct ??
+    0
+  );
+
+});
 const pf = new Set(data.pf);
 const wl = new Set(data.wl);
 const signals = data.signals;
