@@ -1,10 +1,10 @@
 /**
- * Clean and regenerate data/stocks.xlsx from tickers.json
+ * Clean and regenerate data/stocks.xlsx from canonical ticker configuration
  * Usage: node scripts/cleanWorkbook.js
  *
  * This script:
  *   1. Deletes the existing stocks.xlsx file
- *   2. Regenerates a fresh workbook from tickers.json
+ *   2. Regenerates a fresh workbook from Firestore/local fallback configuration
  *   3. Removes any invalid or test tickers that may have accumulated
  */
 
@@ -24,7 +24,7 @@ if (fs.existsSync(WORKBOOK_PATH)) {
 }
 
 // Regenerate fresh workbook by importing createWorkbook
-console.log("📄 Regenerating clean workbook from tickers.json...");
+console.log("📄 Regenerating clean workbook from canonical ticker configuration...");
 
 // Dynamic import to run createWorkbook
 const createWorkbookModule = await import("./createWorkbook.js");

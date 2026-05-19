@@ -12,12 +12,16 @@ import ExcelJS from "exceljs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import { loadTickerConfig } from "../lib/loadTickerConfig.js";
 //import { createRequire } from "module";
 //const require = createRequire(import.meta.url);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const { portfolio: portfolioTickers, watchlist: watchlistTickers } =
-  JSON.parse(fs.readFileSync(path.resolve(__dirname, "../data/tickers.json"), "utf8"));
+
+const tickerConfig = await loadTickerConfig();
+
+const portfolioTickers = tickerConfig.portfolio || [];
+const watchlistTickers = tickerConfig.watchlist || [];
 
 const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
 

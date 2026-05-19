@@ -12,8 +12,8 @@
     "screen-ndx": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js ndx",
     "screen-sp100": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js sp100",
     "screen-all": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js all",
-    "setup": "node scripts/createWorkbook.js && node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js all",   
-    "clean-workbook": "node scripts/cleanWorkbook.js && node --use-system-ca --experimental-specifier-resolution=node scripts/cleanWorkbook.js all",   
+    "setup": "node scripts/createWorkbook.js && node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js all",
+    "clean-workbook": "node scripts/cleanWorkbook.js && node --use-system-ca --experimental-specifier-resolution=node scripts/cleanWorkbook.js all",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -32,6 +32,7 @@
     "dayjs": "^1.11.20",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
+    "firebase": "^12.13.0",
     "simple-statistics": "^7.8.9",
     "yahoo-finance2": "^3.14.0"
   },

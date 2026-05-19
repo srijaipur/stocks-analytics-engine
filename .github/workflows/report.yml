@@ -14,16 +14,12 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci --omit=dev
-      - name: Debug tickers.json
-        run: |
-          echo "Checking tickers.json..."
-          cat data/tickers.json || echo "tickers.json missing"
       - name: Seed workbook
         run: node scripts/createWorkbook.js
-      - name: Verify ticker source
-        run: |
-          if ! grep -qE '[A-Z]{1,5}' data/tickers.json; then
-            echo "ERROR: No tickers found in tickers.json"
+      - name: Verify workbook generation
+        run:  |
+          if [ ! -f data/stocks.xlsx ]; then
+            echo "ERROR: Workbook generation failed"
             exit 1
           fi
       - name: Run analytics pipeline
