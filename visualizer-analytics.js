@@ -4,661 +4,628 @@ import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
-const OUTPUT_PATH = path.resolve(__dirname, "data/analytics.html");
-const SERVE = process.argv.includes("--serve");
+import { firebaseConfig } from "./firebase/firebaseConfig.js";
 
-// ---------- READ ----------
+const __dirname = path.dirname(
+  fileURLToPath(import.meta.url)
+);
+
+const WORKBOOK_PATH = path.resolve(
+  __dirname,
+  "data/stocks.xlsx"
+);
+
+const OUTPUT_PATH = path.resolve(
+  __dirname,
+  "data/analytics.html"
+);
+
+const SERVE =
+  process.argv.includes("--serve");
+
+// ======================================================
+// READ EXCEL
+// ======================================================
+
 async function readData() {
+
   const wb = new ExcelJS.Workbook();
+
   await wb.xlsx.readFile(WORKBOOK_PATH);
 
   const rows = [];
-  const headers = [];
 
-  const sheet = wb.getWorksheet("ScoresCurrent");
+  const sheet =
+    wb.getWorksheet("ScoresCurrent");
+
+  if (!sheet) {
+
+    throw new Error(
+      "ScoresCurrent worksheet missing"
+    );
+  }
 
   sheet.eachRow((row, i) => {
+
+    if (i === 1) return;
+
     const vals = row.values.slice(1);
-    if (i === 1) headers.push(...vals);
-    else {
-    
-      const obj = {
-  Ticker: vals[0],
-  EPS_TTM: vals[1],
-  EPS_Percentile: vals[2],
-  EPS_Growth: vals[3],
-  Inst_Accumulation: vals[4],
-  Alpha_63D: vals[5],
-  Beta: vals[6],
-  RSI: vals[7],
-  SMA200_Dist: vals[8],
-  MA_Slope: vals[9],
-  Volume_Expansion: vals[10],
-  Net_Inst: vals[11],
-  RS_vs_SP100: vals[12],
-  Return_63D: vals[13],
-  RS_Rank: vals[14],
-  Drawdown_pct: vals[15],
-  Old_Score: vals[16],
-  New_Score: vals[17],
-  Earnings_Date: vals[18],
-  Delta: vals[19],
-};
-      if (obj.Ticker) rows.push(obj);
+
+    const obj = {
+
+      Ticker: vals[0],
+
+      EPS_TTM: vals[1],
+
+      EPS_Percentile: vals[2],
+
+      EPS_Growth: vals[3],
+
+      Inst_Accumulation: vals[4],
+
+      Alpha_63D: vals[5],
+
+      Beta: vals[6],
+
+      RSI: vals[7],
+
+      SMA200_Dist: vals[8],
+
+      MA_Slope: vals[9],
+
+      Volume_Expansion: vals[10],
+
+      Net_Inst: vals[11],
+
+      RS_vs_SP100: vals[12],
+
+      Return_63D: vals[13],
+
+      RS_Rank: vals[14],
+
+      Drawdown_pct: vals[15],
+
+      Composite_Score: vals[16],
+
+      New_Composite_Score: vals[17],
+
+      Earnings_Date: vals[18],
+
+      Daily_Composite_Score_delta: vals[19]
+    };
+
+    if (obj.Ticker) {
+      rows.push(obj);
     }
   });
 
-  // Signals
-  const signalsSheet = wb.getWorksheet("SignalsTriggered");
-  const signals = [];
-
-  if (signalsSheet) {
-    signalsSheet.eachRow((row, i) => {
-      if (i === 1) return;
-      signals.push({
-        ticker: row.getCell(1).value,
-        score: row.getCell(2).value,
-        triggers: row.getCell(3).value,
-      });
-    });
-  }
-
-  const pf = new Set();
-  const wl = new Set();
-
-  const ps = wb.getWorksheet("Portfolio");
-  const ws = wb.getWorksheet("Watchlist");
-
-  if (ps) ps.eachRow((r, i) => { if (i > 1) pf.add(r.getCell(1).value); });
-  if (ws) ws.eachRow((r, i) => { if (i > 1) wl.add(r.getCell(1).value); });
-
-  return { rows, pf:[...pf], wl:[...wl], signals };
+  return { rows };
 }
 
-// ---------- UI ----------
-function buildHtml(data) {
-const safe = JSON.stringify(data).replace(/</g, "\\u003c");
+// ======================================================
+// BUILD HTML
+// ======================================================
 
-return `
-<!DOCTYPE html>
+function buildHtml(data) {
+
+  const safe = JSON.stringify(data)
+    .replace(/</g, "\\u003c");
+
+  return `<!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 
-<!-- ✅ FIXED CHART LOAD -->
+<title>Stocks Analytics</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
 
 <style>
-body { background:#0f1117; color:#ddd; font-family:sans-serif }
 
-.tabs { display:flex; gap:10px; padding:10px }
-.tab { background:#1a1d27; padding:8px; cursor:pointer }
-.active { background:#333 }
+body {
+  margin:0;
+  background:#0f1117;
+  color:#ddd;
+  font-family:sans-serif;
+}
+
+header {
+  padding:16px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tabs {
+  display:flex;
+  gap:12px;
+  padding:12px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tab-btn {
+  background:#1d2330;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.page {
+  display:none;
+  padding:24px;
+}
+
+.page.active {
+  display:block;
+}
 
 .grid {
- display:grid;
- grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
- gap:10px;
- padding:10px;
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(280px,1fr));
+  gap:16px;
 }
 
 .card {
- background:#1a1d27;
- border-radius:10px;
- padding:10px;
- text-align:center;
+  background:#1a1d27;
+  border-radius:12px;
+  padding:16px;
 }
 
-.score { font-size:1.4rem }
+.metric {
+  margin-top:8px;
+}
 
-.green { border:1px solid #00e676 }
-.yellow { border:1px solid #ffd600 }
-.red { border:1px solid #f44336 }
+.center-screen {
+  height:80vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:16px;
+}
 
-.text-green { color:#00e676 }
-.text-blue { color:#00bcd4 }
-.text-yellow { color:#ffd600 }
-.text-red { color:#f44336 }
+.hidden {
+  display:none;
+}
 
-.small { font-size:0.8rem; color:#aaa }
+canvas {
+  background:#161922;
+  border-radius:12px;
+  padding:16px;
+}
 
-.hidden { display:none }
+.login-btn {
+  background:#2563eb;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:12px 18px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+.error-box {
+  background:#3b1111;
+  border:1px solid #7f1d1d;
+  padding:16px;
+  border-radius:10px;
+  margin:20px;
+}
+
+.green {
+  border-left:4px solid #16a34a;
+}
+
+.yellow {
+  border-left:4px solid #ca8a04;
+}
+
+.red {
+  border-left:4px solid #dc2626;
+}
+
 </style>
 
 </head>
 
 <body>
 
-<h2 style="padding-left:10px">📊 Full Dashboard</h2>
+<div id="auth"></div>
+
+<div id="app" class="hidden">
+
+<header>
+  <h1>
+    📊 Stocks Analytics Dashboard
+  </h1>
+</header>
 
 <div class="tabs">
- <div class="tab active" onclick="show('analytics',this)">Analytics</div>
- <div class="tab" onclick="show('signals',this)">Signals</div>
- <div class="tab" onclick="show('trends',this)">Trends</div>
- <div class="tab" onclick="show('risk',this)">Risk</div>
-</div>
 
-<!-- ✅ ANALYTICS -->
-<div id="analytics">
-<h3>📊 Portfolio Structural Strength</h3>
-<div id="pf" class="grid"></div>
+  <button
+    class="tab-btn"
+    data-tab="overview"
+  >
+    Overview
+  </button>
 
-<h3>👀 Watchlist Structural Strength</h3>
-<div id="wl" class="grid"></div>
-</div>
+  <button
+    class="tab-btn"
+    data-tab="risk"
+  >
+    Risk
+  </button>
 
-<!-- ✅ SIGNALS -->
-<div id="signals" class="hidden">
-<div id="signalsGrid" class="grid"></div>
-</div>
-
-<!-- ✅ TRENDS -->
-<div id="trends" class="hidden">
-
-<h3>🚀 Leaders</h3>
-<div id="leaders" class="grid"></div>
-
-<h3>⚡ Improving</h3>
-<div id="improving" class="grid"></div>
-
-<h3>⚠ Weakening</h3>
-<div id="weakening" class="grid"></div>
-
-<h3>❌ Laggards</h3>
-<div id="laggards" class="grid"></div>
-
-<canvas id="chart"></canvas>
+  <button
+    class="tab-btn"
+    data-tab="trends"
+  >
+    Trends
+  </button>
 
 </div>
 
-<!-- ✅ RISK TAB -->
-<div id="risk" class="hidden">
+<div
+  id="overview"
+  class="page active"
+>
 
-<h3>🛡️ Portfolio Health</h3>
-<div id="riskSummary" class="small" style="padding:10px;"></div>
-
-<h4>⚠️ Risk Alerts</h4>
-<div id="riskList" class="grid"></div>
+  <div
+    class="grid"
+    id="overviewGrid"
+  ></div>
 
 </div>
 
-<script>
+<div
+  id="risk"
+  class="page"
+>
 
-const data = ${safe};
-const rows = data.rows;
-// ---------- SCHEMA NORMALIZATION ----------
-rows.forEach(function(r){
+  <div
+    class="grid"
+    id="riskGrid"
+  ></div>
 
-  // numeric normalization
-  r.New_Score = Number(r.New_Score ?? r.Composite_Score ?? 0);
+</div>
 
-  r.Delta = Number(
-    r.Delta ??
-    r.Daily_Composite_Score_delta ??
-    0
-  );
+<div
+  id="trends"
+  class="page"
+>
 
-  r.MA_Slope = Number(
-    r.MA_Slope ??
-    r.MA_Slope_50 ??
-    0
-  );
+  <canvas id="trendChart"></canvas>
 
-  r.Drawdown_pct = Number(
-    r["Drawdown_%"] ??
-    r.Drawdown_pct ??
-    0
-  );
+</div>
 
-});
-const pf = new Set(data.pf);
-const wl = new Set(data.wl);
-const signals = data.signals;
+</div>
+<script src="/api/analytics-data.js"></script>
+<script type="module">
 
-// ---------- HELPERS ----------
-function tier(score){
- if(score >= 80) return "High Strength";
- if(score >= 60) return "Constructive";
- if(score >= 40) return "Mixed";
- return "Weak Structure";
-}
+// ======================================================
+// FIREBASE IMPORTS
+// ======================================================
 
-function color(score){
- if(score>=80) return "green";
- if(score>=40) return "yellow";
- return "red";
-}
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
 
-function delta(v){
- if(v == null) return "—";
- return v>=0 ? "▲ +" + v.toFixed(1) : "▼ " + v.toFixed(1);
-}
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
 
-// ---------- ANALYTICS ----------
-function card(r){
+import {
+  getFirestore,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-  const score = Number(r.New_Score);
-  const safeScore = isNaN(score) ? 0 : score;
+// ======================================================
+// FIREBASE INIT
+// ======================================================
 
-  const deltaVal = Number(r.Delta);
-  const safeDelta = isNaN(deltaVal) ? null : deltaVal;
+const app = initializeApp(
+  ${JSON.stringify(firebaseConfig)}
+);
 
-  return "<div class='card "+color(safeScore)+"'>" +
-    "<b>"+r.Ticker+"</b><br>" +
-    "<div class='score'>"+safeScore.toFixed(1)+"</div>" +
-    delta(safeDelta)+"<br>" +
-    "<span class='small'>"+tier(safeScore)+"</span>" +
-  "</div>";
-}
+const auth = getAuth(app);
 
-document.getElementById("pf").innerHTML =
- rows.filter(r=>pf.has(r.Ticker)).map(card).join("");
+const db = getFirestore(app);
 
-document.getElementById("wl").innerHTML =
- rows.filter(r=>wl.has(r.Ticker)).map(card).join("");
+const provider =
+  new GoogleAuthProvider();
 
-// ---------- SIGNALS ----------
-function signalColor(s){
- if(s.includes("Momentum")) return "text-green";
- if(s.includes("Relative")) return "text-blue";
- if(s.includes("Institutional")) return "text-yellow";
- return "text-red";
-}
+// ======================================================
+// ANALYTICS DATA
+// ======================================================
 
-function isBearish(t){
- return (
-  t.includes("Breakdown") ||
-  t.includes("Weak") ||
-  t.includes("Downtrend") ||
-  t.includes("Selling") ||
-  t.includes("Risk")
- );
-}
+// Data is injected securely at runtime
+// from /api/analytics-data.js
 
-let bullHTML = "";
-let bearHTML = "";
+const data =
+  window.__ANALYTICS__ || {
+    rows: []
+  };
 
-signals.forEach(function(s){
+const rows = data.rows || [];
 
- let bullLines = "";
- let bearLines = "";
+// ======================================================
+// DOM REFERENCES
+// ======================================================
 
- s.triggers.split(",").forEach(function(t){
-   const line = "<div class='"+signalColor(t)+"'>"+t+"</div>";
-   if(isBearish(t)) bearLines += line;
-   else bullLines += line;
- });
+const authEl =
+  document.getElementById("auth");
 
- if(bullLines){
-  bullHTML += "<div class='card'><b>"+s.ticker+"</b><br>"+bullLines+"</div>";
- }
- if(bearLines){
-  bearHTML += "<div class='card red'><b>"+s.ticker+"</b><br>"+bearLines+"</div>";
- }
-});
+const appEl =
+  document.getElementById("app");
 
-document.getElementById("signalsGrid").innerHTML =
- "<h3>🔥 Bullish Signals</h3>" + bullHTML +
- "<h3 style='margin-top:20px'>⚠️ Bearish Signals</h3>" + bearHTML;
+// ======================================================
+// TAB SYSTEM
+// ======================================================
 
-// ---------- TRENDS ----------
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
+document
+  .querySelectorAll(".tab-btn")
+  .forEach((btn) => {
 
-const groups = { leader:[], improving:[], weak:[], lag:[] };
+    btn.onclick = () => {
 
-rows.forEach(function(r){
-  groups[Q(r)].push(r);
-});
+      const tab =
+        btn.dataset.tab;
 
-document.getElementById("leaders").innerHTML = groups.leader.map(card).join("");
-document.getElementById("improving").innerHTML = groups.improving.map(card).join("");
-document.getElementById("weakening").innerHTML = groups.weak.map(card).join("");
-document.getElementById("laggards").innerHTML = groups.lag.map(card).join("");
+      document
+        .querySelectorAll(".page")
+        .forEach((p) => {
+          p.classList.remove(
+            "active"
+          );
+        });
 
-// ✅ Scatter Chart (BALANCED + LEGEND ENHANCED)
-const chartEl = document.getElementById("chart");
+      document
+        .getElementById(tab)
+        .classList.add("active");
 
-// ---------- LABEL SELECTION LOGIC ----------
+      if (tab === "trends") {
 
-// Top 5 highest and bottom 5 lowest
-const sortedByScore = rows.slice().sort((a,b)=>b.New_Score - a.New_Score);
-const top5 = sortedByScore.slice(0,5);
-const bottom5 = sortedByScore.slice(-5);
+        const existing =
+          Chart.getChart(
+            "trendChart"
+          );
 
-// Quadrant groups
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
-
-
-const chartGroups = {
-  leader: [],
-  improving: [],
-  weak: [],
-  lag: []
-};
-
-
-rows.forEach(function(r){
-  chartGroups[Q(r)].push(r);
-});
-
-// pick specific counts
-const selected = []
-  .concat(top5)
-  .concat(bottom5)
-  .concat(chartGroups.leader.slice(0,3))
-  .concat(chartGroups.improving.slice(0,3))
-  .concat(chartGroups.weak.slice(0,2))
-  .concat(chartGroups.lag.slice(0,2));
-
-
-// ✅ deduplicate tickers
-const labelSet = new Set(selected.map(r => r.Ticker));
-
-
-// ---------- CHART ----------
-if (chartEl && window.Chart) {
-  new Chart(chartEl, {
-    type: "scatter",
-    data: {
-      datasets: [{
-        label: "Trend vs Score",
-
-        pointBackgroundColor: function(ctx){
-          return ctx.raw.pointBackgroundColor;
-        },
-
-        pointRadius: function(ctx){
-          return ctx.raw.isPortfolio ? 7 : 4;
-        },
-
-        pointBorderWidth: function(ctx){
-          return ctx.raw.isPortfolio ? 2 : 0;
-        },
-
-        pointBorderColor: function(ctx){
-          return ctx.raw.isPortfolio ? "#ffffff" : "transparent";
-        },
-
-        pointHoverRadius: 8,
-
-        data: rows.map(function(r){
-
-          let color = "cyan";
-
-          if(r.New_Score >= 60 && r.MA_Slope > 0) color = "#00e676";
-          else if(r.New_Score < 60 && r.MA_Slope > 0) color = "#00bcd4";
-          else if(r.New_Score >= 60) color = "#ffd600";
-          else color = "#f44336";
-
-          return {
-            x: r.MA_Slope || 0,
-            y: r.New_Score || 0,
-            label: r.Ticker,
-            pointBackgroundColor: color,
-            isPortfolio: pf.has(r.Ticker) || wl.has(r.Ticker), // ✅ portfolio + watchlist
-            showLabel: labelSet.has(r.Ticker) // ✅ controlled labeling
-          };
-        })
-      }]
-    },
-
-    options: {
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              const d = ctx.raw;
-              return (
-                d.label +
-                " | Score: " + d.y.toFixed(1) +
-                " | Trend: " + d.x.toFixed(3)
-              );
-            }
-          }
-        },
-
-        zoom: {
-          pan: { enabled:true, mode:'xy' },
-          zoom: {
-            wheel:{enabled:true},
-            pinch:{enabled:true},
-            mode:'xy'
-          }
-        },
-
-        legend: { display:false }
-      },
-
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Trend (MA Slope)",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" }
-        },
-
-        y: {
-          title: {
-            display: true,
-            text: "Score",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" },
-          min:0,
-          max:100
+        if (!existing) {
+          renderTrendChart();
         }
       }
-    },
-
-    plugins: [
-
-      // ✅ LABELS
-      {
-        id: 'pointLabels',
-        afterDatasetsDraw(chart) {
-          const ctx = chart.ctx;
-
-          chart.data.datasets[0].data.forEach(function(p,i){
-            if(!p.showLabel) return;
-
-            const meta = chart.getDatasetMeta(0).data[i];
-            const pos = meta.getProps(['x','y'], true);
-
-            ctx.fillStyle = "#ddd";
-            ctx.font = "10px sans-serif";
-            ctx.fillText(p.label, pos.x + 6, pos.y - 6);
-          });
-        }
-      },
-
-      // ✅ LEGEND (ENHANCED)
-     {
-  id: 'legendOverlay',
-  beforeDraw(chart) {
-    const ctx = chart.ctx;
-    const chartArea = chart.chartArea;
-
-    // ✅ Position in top-right corner
-    const x = chartArea.right - 180;
-    const y = chartArea.top + 10;
-
-    ctx.save();
-
-    // ✅ Background box (prevents clutter)
-    ctx.fillStyle = "rgba(20,20,20,0.85)";
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    ctx.roundRect(x - 10, y - 5, 190, 100, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    // ✅ Text styling
-    ctx.fillStyle = "#ddd";
-    ctx.font = "12px sans-serif";
-
-    let lineY = y + 10;
-
-    ctx.fillText("🟢 Leaders", x, lineY); lineY += 18;
-    ctx.fillText("🔵 Improving", x, lineY); lineY += 18;
-    ctx.fillText("🟡 Weakening", x, lineY); lineY += 18;
-    ctx.fillText("🔴 Laggards", x, lineY); lineY += 18;
-
-    // ✅ divider line
-    ctx.strokeStyle = "#555";
-    ctx.beginPath();
-    ctx.moveTo(x, lineY);
-    ctx.lineTo(x + 150, lineY);
-    ctx.stroke();
-
-    lineY += 15;
-
-    ctx.fillStyle = "#ccc";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("⬤ White border = Portfolio / Watchlist", x, lineY);
-
-    ctx.restore();
-  }
-}
-
-    ]
+    };
   });
+
+// ======================================================
+// AUTH FLOW
+// ======================================================
+
+onAuthStateChanged(
+  auth,
+  async (user) => {
+
+    if (!user) {
+
+      authEl.innerHTML =
+        '<div class="center-screen">' +
+        '<h2>🔒 Login Required</h2>' +
+        '<button id="loginBtn" class="login-btn">' +
+        'Sign in with Google' +
+        '</button>' +
+        '</div>';
+
+      document
+        .getElementById(
+          "loginBtn"
+        )
+        .onclick = () => {
+          signInWithPopup(
+            auth,
+            provider
+          );
+        };
+
+      return;
+    }
+
+    try {
+
+      const email =
+        user.email;
+
+      const whitelistRef =
+        doc(
+          db,
+          "whitelist",
+          email
+        );
+
+      const whitelistSnap =
+        await getDoc(
+          whitelistRef
+        );
+
+      if (
+        !whitelistSnap.exists()
+      ) {
+
+        authEl.innerHTML =
+          '<div class="error-box">' +
+          '<h2>⛔ Access Denied</h2>' +
+          '<div>' +
+          email +
+          '</div>' +
+          '</div>';
+
+        return;
+      }
+
+      authEl.innerHTML = "";
+
+      appEl.classList.remove(
+        "hidden"
+      );
+
+      renderOverview();
+
+      renderRisk();
+
+    } catch (err) {
+
+      console.error(err);
+
+      authEl.innerHTML =
+        '<div class="error-box">' +
+        '<h2>❌ Authentication Error</h2>' +
+        '<pre>' +
+        err.message +
+        '</pre>' +
+        '</div>';
+    }
+  }
+);
+
+// ======================================================
+// OVERVIEW
+// ======================================================
+
+function scoreColor(score) {
+
+  if (score >= 80) {
+    return "green";
+  }
+
+  if (score >= 40) {
+    return "yellow";
+  }
+
+  return "red";
 }
 
-// ---------- PORTFOLIO RISK (ENHANCED + BACKWARD SAFE) ----------
-const portfolioRows = rows.filter(r => pf.has(r.Ticker));
+function renderOverview() {
 
-// ✅ preserve your original counts
-let greenCount = 0;
-let yellowCount = 0;
-let redCount = 0;
+  const target =
+    document.getElementById(
+      "overviewGrid"
+    );
 
-// ✅ new scoring system
-let totalRiskPoints = 0;
-let riskHTML = "";
-let contributors = [];
+  target.innerHTML = rows
+    .slice(0, 20)
+    .map((r) => {
 
-portfolioRows.forEach(function(r){
+      return (
+        '<div class="card ' +
+        scoreColor(
+          r.New_Composite_Score
+        ) +
+        '">' +
 
-  let flags = [];
-  let risk = 0;
+        '<h3>' +
+        r.Ticker +
+        '</h3>' +
 
-  // ✅ ORIGINAL COLOR CLASSIFICATION (PRESERVED)
-  if(r.New_Score >= 80) greenCount++;
-  else if(r.New_Score >= 40) yellowCount++;
-  else redCount++;
+        '<div class="metric">' +
+        'Score: ' +
+        r.New_Composite_Score +
+        '</div>' +
 
-  // ✅ SCORING MODEL (NEW)
-  if(r.New_Score < 40){
-    risk += 40;
-    flags.push("Weak Score");
-  }
-  else if(r.New_Score < 60){
-    risk += 20;
-  }
+        '<div class="metric">' +
+        'RS Rank: ' +
+        r.RS_Rank +
+        '</div>' +
 
-  if(r.MA_Slope < 0){
-    risk += 30;
-    flags.push("Downtrend");
-  }
+        '</div>'
+      );
 
-  if(r.Drawdown_pct > 30){
-    risk += 30;
-    flags.push("Drawdown Risk");
-  }
-
-  totalRiskPoints += risk;
-
-  // ✅ preserve your alert logic
-  if(flags.length){
-    riskHTML += "<div class='card red'>" +
-      "<b>" + r.Ticker + "</b><br>" +
-      flags.join("<br>") +
-    "</div>";
-  }
-
-  // ✅ NEW: contributor ranking
-  if(risk >= 40){
-    contributors.push({
-      ticker: r.Ticker,
-      risk: risk,
-      reasons: flags
-    });
-  }
-
-});
-
-// ✅ FINAL SCORE (NEW)
-let avgRisk = 0;
-
-if(portfolioRows.length > 0){
-  avgRisk = Math.round(totalRiskPoints / portfolioRows.length);
+    })
+    .join("");
 }
 
-if(avgRisk > 100) avgRisk = 100;
+// ======================================================
+// RISK
+// ======================================================
 
-// ✅ LEVEL (slightly refined)
-let riskLevel = "LOW";
+function renderRisk() {
 
-if(avgRisk >= 60) riskLevel = "HIGH";
-else if(avgRisk >= 30) riskLevel = "MODERATE";
+  const risky = rows.filter(
+    (r) => {
 
-// ✅ UPDATED SUMMARY (MERGED OLD + NEW)
-document.getElementById("riskSummary").innerHTML =
-  "<b>Risk Score: " + avgRisk + " / 100</b><br><br>" +
-  "Level: " + riskLevel + "<br><br>" +
-  "Exposure → " +
-  "🟢 " + greenCount +
-  " | 🟡 " + yellowCount +
-  " | 🔴 " + redCount;
+      return (
+        r.Drawdown_pct > 25
+      );
+    }
+  );
 
-// ✅ TOP CONTRIBUTORS (NEW INSIGHT)
-contributors = contributors
-  .sort(function(a,b){ return b.risk - a.risk; })
-  .slice(0,5);
+  document
+    .getElementById(
+      "riskGrid"
+    )
+    .innerHTML = risky
+      .map((r) => {
 
-// ✅ MERGE alerts + contributors
-document.getElementById("riskList").innerHTML =
-  contributors.length
-    ? contributors.map(function(c){
-        return "<div class='card red'>" +
-          "<b>" + c.ticker + "</b><br>" +
-          c.reasons.join("<br>") +
-        "</div>";
-      }).join("")
-    : "<span class='small'>No major risks detected</span>";
+        return (
+          '<div class="card red">' +
 
-// ---------- TABS ----------
-function show(id,el){
- document.getElementById("analytics").classList.add("hidden");
- document.getElementById("signals").classList.add("hidden");
- document.getElementById("trends").classList.add("hidden");
- document.getElementById("risk").classList.add("hidden");
+          '<h3>⚠️ ' +
+          r.Ticker +
+          '</h3>' +
 
- document.getElementById(id).classList.remove("hidden");
+          '<div>' +
+          'Drawdown: ' +
+          r.Drawdown_pct +
+          '</div>' +
 
- document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
- el.classList.add("active");
+          '</div>'
+        );
+
+      })
+      .join("");
+}
+
+// ======================================================
+// TREND CHART
+// ======================================================
+
+function renderTrendChart() {
+
+  const ctx =
+    document.getElementById(
+      "trendChart"
+    );
+
+  new Chart(ctx, {
+
+    type: "bar",
+
+    data: {
+
+      labels: rows
+        .slice(0, 15)
+        .map(
+          (r) => r.Ticker
+        ),
+
+      datasets: [{
+
+        label: "Score",
+
+        data: rows
+          .slice(0, 15)
+          .map(
+            (r) =>
+              r.New_Composite_Score
+          )
+      }]
+    }
+  });
 }
 
 </script>
@@ -667,19 +634,55 @@ function show(id,el){
 </html>`;
 }
 
-// ---------- MAIN ----------
-(async()=>{
- const data = await readData();
- const html = buildHtml(data);
+// ======================================================
+// MAIN
+// ======================================================
 
- fs.writeFileSync(OUTPUT_PATH,html);
+(async () => {
 
- if(SERVE){
-  http.createServer((req,res)=>{
-    res.writeHead(200,{"Content-Type":"text/html"});
-    res.end(html);
-  }).listen(3000,"0.0.0.0");
+  const data =
+    await readData();
 
-  process.stdin.resume();
- }
+  const html =
+    buildHtml(data);
+
+  fs.writeFileSync(
+    OUTPUT_PATH,
+    html
+  );
+
+  console.log(
+    "analytics.html generated"
+  );
+
+  if (SERVE) {
+
+    http
+      .createServer(
+        (req, res) => {
+
+          res.writeHead(
+            200,
+            {
+              "Content-Type":
+                "text/html"
+            }
+          );
+
+          res.end(html);
+
+        }
+      )
+      .listen(
+        3000,
+        "0.0.0.0",
+        () => {
+
+          console.log(
+            "Server running at http://localhost:3000"
+          );
+        }
+      );
+  }
+
 })();
