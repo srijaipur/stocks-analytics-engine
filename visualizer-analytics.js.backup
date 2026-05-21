@@ -1,4 +1,117 @@
-<!DOCTYPE html>
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import http from "http";
+
+import { firebaseConfig } from "./firebase/firebaseConfig.js";
+
+const __dirname = path.dirname(
+  fileURLToPath(import.meta.url)
+);
+
+const WORKBOOK_PATH = path.resolve(
+  __dirname,
+  "data/stocks.xlsx"
+);
+
+const OUTPUT_PATH = path.resolve(
+  __dirname,
+  "data/analytics.html"
+);
+
+const SERVE =
+  process.argv.includes("--serve");
+
+// ======================================================
+// READ EXCEL
+// ======================================================
+
+async function readData() {
+
+  const wb = new ExcelJS.Workbook();
+
+  await wb.xlsx.readFile(WORKBOOK_PATH);
+
+  const rows = [];
+
+  const sheet =
+    wb.getWorksheet("ScoresCurrent");
+
+  if (!sheet) {
+
+    throw new Error(
+      "ScoresCurrent worksheet missing"
+    );
+  }
+
+  sheet.eachRow((row, i) => {
+
+    if (i === 1) return;
+
+    const vals = row.values.slice(1);
+
+    const obj = {
+
+      Ticker: vals[0],
+
+      EPS_TTM: vals[1],
+
+      EPS_Percentile: vals[2],
+
+      EPS_Growth: vals[3],
+
+      Inst_Accumulation: vals[4],
+
+      Alpha_63D: vals[5],
+
+      Beta: vals[6],
+
+      RSI: vals[7],
+
+      SMA200_Dist: vals[8],
+
+      MA_Slope: vals[9],
+
+      Volume_Expansion: vals[10],
+
+      Net_Inst: vals[11],
+
+      RS_vs_SP100: vals[12],
+
+      Return_63D: vals[13],
+
+      RS_Rank: vals[14],
+
+      Drawdown_pct: vals[15],
+
+      Composite_Score: vals[16],
+
+      New_Composite_Score: vals[17],
+
+      Earnings_Date: vals[18],
+
+      Daily_Composite_Score_delta: vals[19]
+    };
+
+    if (obj.Ticker) {
+      rows.push(obj);
+    }
+  });
+
+  return { rows };
+}
+
+// ======================================================
+// BUILD HTML
+// ======================================================
+
+function buildHtml(data) {
+
+  const safe = JSON.stringify(data)
+    .replace(/</g, "\\u003c");
+
+  return `<!DOCTYPE html>
 <html>
 
 <head>
@@ -160,92 +273,10 @@ canvas {
   class="page active"
 >
 
-  <!-- ===================================== -->
-  <!-- LEADERSHIP STRIP -->
-  <!-- ===================================== -->
-
   <div
     class="grid"
     id="overviewGrid"
   ></div>
-
-  <!-- ===================================== -->
-  <!-- SEARCH -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      margin-top:24px;
-      margin-bottom:16px;
-    "
-  >
-
-    <input
-      id="tickerSearch"
-      type="text"
-      placeholder="Search ticker..."
-      style="
-        width:100%;
-        max-width:320px;
-        padding:12px;
-        border-radius:8px;
-        border:none;
-        background:#1a1d27;
-        color:#ddd;
-        font-size:14px;
-      "
-    />
-
-  </div>
-
-  <!-- ===================================== -->
-  <!-- ANALYTICS TABLE -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      overflow-x:auto;
-      border-radius:12px;
-    "
-  >
-
-    <table
-      id="analyticsTable"
-      style="
-        width:100%;
-        border-collapse:collapse;
-        min-width:900px;
-        background:#161922;
-      "
-    >
-
-      <thead>
-
-        <tr
-          style="
-            background:#1d2330;
-            text-align:left;
-          "
-        >
-
-          <th style="padding:12px;">Ticker</th>
-          <th style="padding:12px;">Score</th>
-          <th style="padding:12px;">RS Rank</th>
-          <th style="padding:12px;">RSI</th>
-          <th style="padding:12px;">MA Slope</th>
-          <th style="padding:12px;">Drawdown</th>
-          <th style="padding:12px;">Beta</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody id="analyticsTableBody">
-      </tbody>
-
-    </table>
-
-  </div>
 
 </div>
 
@@ -300,7 +331,7 @@ import {
 // ======================================================
 
 const app = initializeApp(
-  {"apiKey":"AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw","authDomain":"stocks-analytics-platform.firebaseapp.com","projectId":"stocks-analytics-platform","storageBucket":"stocks-analytics-platform.firebasestorage.app","messagingSenderId":"563385076829","appId":"1:563385076829:web:dabe2dd4eb5955200b51b4"}
+  ${JSON.stringify(firebaseConfig)}
 );
 
 const auth = getAuth(app);
@@ -333,68 +364,6 @@ const authEl =
 
 const appEl =
   document.getElementById("app");
-
-  // ======================================================
-// AUTH UI HELPERS
-// ======================================================
-
-function renderLoginScreen() {
-
-   authEl.innerHTML =
-    '<div class="center-screen">' +
-    '<h2>🔒 Login Required</h2>' +
-    '<button id="loginBtn" class="login-btn">' +
-    'Sign in with Google' +
-    '</button>' +
-    '</div>';
-
-  document
-    .getElementById(
-      "loginBtn"
-    )
-    .onclick = () => {
-
-      signInWithPopup(
-        auth,
-        provider
-      );
-    };
-}
-
-function renderAccessDenied(email) {
-
-  authEl.innerHTML =
-    '<div class="error-box">' +
-    '<h2>⛔ Access Denied</h2>' +
-    '<div>' +
-    email +
-    '</div>' +
-    '</div>';
-}
-
-function renderAuthError(err) {
-
-  authEl.innerHTML =
-    '<div class="error-box">' +
-    '<h2>❌ Authentication Error</h2>' +
-    '<pre>' +
-    err.message +
-    '</pre>' +
-    '</div>';
-}
-
-function bootAuthenticatedApp() {
-
-  authEl.innerHTML = "";
-
-  appEl.classList.remove(
-    "hidden"
-  );
-
-  renderOverview();
-
-  renderRisk();
-}
 
 // ======================================================
 // TAB SYSTEM
@@ -445,8 +414,6 @@ onAuthStateChanged(
 
     if (!user) {
 
-    renderLoginScreen();
-
       authEl.innerHTML =
         '<div class="center-screen">' +
         '<h2>🔒 Login Required</h2>' +
@@ -490,8 +457,6 @@ onAuthStateChanged(
         !whitelistSnap.exists()
       ) {
 
-      renderAccessDenied(email);
-
         authEl.innerHTML =
           '<div class="error-box">' +
           '<h2>⛔ Access Denied</h2>' +
@@ -513,11 +478,7 @@ onAuthStateChanged(
 
       renderRisk();
 
-      bootAuthenticatedApp();
-
     } catch (err) {
-
-    renderAuthError(err);
 
       console.error(err);
 
@@ -549,12 +510,7 @@ function scoreColor(score) {
   return "red";
 }
 
-
 function renderOverview() {
-
-  // ==========================================
-  // LEADERSHIP STRIP
-  // ==========================================
 
   const target =
     document.getElementById(
@@ -562,61 +518,28 @@ function renderOverview() {
     );
 
   target.innerHTML = rows
-    .slice(0, 10)
+    .slice(0, 20)
     .map((r) => {
 
-      const score =
-        Number(
-          r.New_Composite_Score || 0
-        ).toFixed(1);
-
-      const rs =
-        Number(
-          r.RS_Rank || 0
-        ).toFixed(1);
-
-      const eps =
-        Number(
-          r.EPS_TTM || 0
-        ).toFixed(2);
-
-      const inst =
-        Number(
-          r.Inst_Accumulation || 0
-        ).toFixed(2);
-
       return (
-
         '<div class="card ' +
-
         scoreColor(
           r.New_Composite_Score
         ) +
-
         '">' +
 
-        '<h2>' +
+        '<h3>' +
         r.Ticker +
-        '</h2>' +
+        '</h3>' +
 
         '<div class="metric">' +
-        '<strong>Composite Score:</strong> ' +
-        score +
+        'Score: ' +
+        r.New_Composite_Score +
         '</div>' +
 
         '<div class="metric">' +
-        '<strong>RS Rank:</strong> ' +
-        rs +
-        '</div>' +
-
-        '<div class="metric">' +
-        '<strong>EPS:</strong> ' +
-        eps +
-        '</div>' +
-
-        '<div class="metric">' +
-        '<strong>Institutional Accumulation:</strong> ' +
-        inst +
+        'RS Rank: ' +
+        r.RS_Rank +
         '</div>' +
 
         '</div>'
@@ -624,112 +547,11 @@ function renderOverview() {
 
     })
     .join("");
-
-  // ==========================================
-  // ANALYTICS TABLE
-  // ==========================================
-
-  renderAnalyticsTable(rows);
 }
-
 
 // ======================================================
 // RISK
 // ======================================================
-function renderAnalyticsTable(
-  dataRows
-) {
-
-  // ==========================================
-  // SEARCH INPUT
-  // ==========================================
-
-  const searchInput =
-    document.getElementById(
-      "tickerSearch"
-    );
-
-  // ==========================================
-  // TABLE INITIAL RENDER
-  // ==========================================
-
-  renderAnalyticsTableRows(
-    dataRows
-  );
-
-  // ==========================================
-  // LIVE SEARCH
-  // ==========================================
-
-  searchInput.oninput = () => {
-
-    const term =
-      searchInput.value
-        .toLowerCase();
-
-    const filtered =
-      rows.filter((r) => {
-
-        return (
-          r.Ticker
-            .toLowerCase()
-            .includes(term)
-        );
-      });
-
-    renderAnalyticsTableRows(
-      filtered
-    );
-  };
-}
-
-function renderAnalyticsTableRows(
-  dataRows
-) {
-
-  const body =
-    document.getElementById(
-      "analyticsTableBody"
-    );
-
-  body.innerHTML =
-    dataRows
-      .map((r) => {
-
-        const score =
-          Number(
-            r.New_Composite_Score || 0
-          ).toFixed(1);
-
-        const rs =
-          Number(
-            r.RS_Rank || 0
-          ).toFixed(1);
-
-        const rsi =
-          Number(
-            r.RSI_14Day || 0
-          ).toFixed(1);
-
-        const slope =
-          Number(
-            r.MA_Slope_50 || 0
-          ).toFixed(2);
-
-        const drawdown =
-          Number(
-            r.Drawdown_pct || 0
-          ).toFixed(1);
-
-        const beta =
-          Number(
-            r.Beta || 0
-          ).toFixed(2);
-
-       return ( '<tr>' + '<td style="padding:12px;">' + r.Ticker + '</td>' + '<td style="padding:12px;">' + score + '</td>' + '<td style="padding:12px;">' + rs + '</td>' + '<td style="padding:12px;">' + rsi + '</td>' + '<td style="padding:12px;">' + slope + '</td>' + '<td style="padding:12px;">' + drawdown + '</td>' + '<td style="padding:12px;">' + beta + '</td>' + '</tr>' );
-      })
-      .join("");
-}
 
 function renderRisk() {
 
@@ -809,4 +631,89 @@ function renderTrendChart() {
 </script>
 
 </body>
-</html>
+</html>`;
+}
+
+// ======================================================
+// MAIN
+// ======================================================
+
+(async () => {
+
+  const data =
+    await readData();
+
+  const html =
+    buildHtml(data);
+
+  fs.writeFileSync(
+    OUTPUT_PATH,
+    html
+  );
+
+  console.log(
+    "analytics.html generated"
+  );
+
+  if (SERVE) {
+
+    http
+  .createServer(
+    (req, res) => {
+
+      // ==========================================
+      // API: analytics runtime data
+      // ==========================================
+
+      if (
+        req.url ===
+        "/api/analytics-data.js"
+      ) {
+
+        const payload =
+          `
+window.__ANALYTICS_DATA__ = ${JSON.stringify(data)};
+`;
+
+        res.writeHead(
+          200,
+          {
+            "Content-Type":
+              "application/javascript"
+          }
+        );
+
+        res.end(payload);
+
+        return;
+      }
+
+      // ==========================================
+      // DEFAULT: analytics html
+      // ==========================================
+
+      res.writeHead(
+        200,
+        {
+          "Content-Type":
+            "text/html"
+        }
+      );
+
+      res.end(html);
+
+    }
+  )
+      .listen(
+        3000,
+        "0.0.0.0",
+        () => {
+
+          console.log(
+            "Server running at http://localhost:3000"
+          );
+        }
+      );
+  }
+
+})();

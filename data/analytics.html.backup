@@ -160,92 +160,10 @@ canvas {
   class="page active"
 >
 
-  <!-- ===================================== -->
-  <!-- LEADERSHIP STRIP -->
-  <!-- ===================================== -->
-
   <div
     class="grid"
     id="overviewGrid"
   ></div>
-
-  <!-- ===================================== -->
-  <!-- SEARCH -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      margin-top:24px;
-      margin-bottom:16px;
-    "
-  >
-
-    <input
-      id="tickerSearch"
-      type="text"
-      placeholder="Search ticker..."
-      style="
-        width:100%;
-        max-width:320px;
-        padding:12px;
-        border-radius:8px;
-        border:none;
-        background:#1a1d27;
-        color:#ddd;
-        font-size:14px;
-      "
-    />
-
-  </div>
-
-  <!-- ===================================== -->
-  <!-- ANALYTICS TABLE -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      overflow-x:auto;
-      border-radius:12px;
-    "
-  >
-
-    <table
-      id="analyticsTable"
-      style="
-        width:100%;
-        border-collapse:collapse;
-        min-width:900px;
-        background:#161922;
-      "
-    >
-
-      <thead>
-
-        <tr
-          style="
-            background:#1d2330;
-            text-align:left;
-          "
-        >
-
-          <th style="padding:12px;">Ticker</th>
-          <th style="padding:12px;">Score</th>
-          <th style="padding:12px;">RS Rank</th>
-          <th style="padding:12px;">RSI</th>
-          <th style="padding:12px;">MA Slope</th>
-          <th style="padding:12px;">Drawdown</th>
-          <th style="padding:12px;">Beta</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody id="analyticsTableBody">
-      </tbody>
-
-    </table>
-
-  </div>
 
 </div>
 
@@ -334,68 +252,6 @@ const authEl =
 const appEl =
   document.getElementById("app");
 
-  // ======================================================
-// AUTH UI HELPERS
-// ======================================================
-
-function renderLoginScreen() {
-
-   authEl.innerHTML =
-    '<div class="center-screen">' +
-    '<h2>🔒 Login Required</h2>' +
-    '<button id="loginBtn" class="login-btn">' +
-    'Sign in with Google' +
-    '</button>' +
-    '</div>';
-
-  document
-    .getElementById(
-      "loginBtn"
-    )
-    .onclick = () => {
-
-      signInWithPopup(
-        auth,
-        provider
-      );
-    };
-}
-
-function renderAccessDenied(email) {
-
-  authEl.innerHTML =
-    '<div class="error-box">' +
-    '<h2>⛔ Access Denied</h2>' +
-    '<div>' +
-    email +
-    '</div>' +
-    '</div>';
-}
-
-function renderAuthError(err) {
-
-  authEl.innerHTML =
-    '<div class="error-box">' +
-    '<h2>❌ Authentication Error</h2>' +
-    '<pre>' +
-    err.message +
-    '</pre>' +
-    '</div>';
-}
-
-function bootAuthenticatedApp() {
-
-  authEl.innerHTML = "";
-
-  appEl.classList.remove(
-    "hidden"
-  );
-
-  renderOverview();
-
-  renderRisk();
-}
-
 // ======================================================
 // TAB SYSTEM
 // ======================================================
@@ -445,8 +301,6 @@ onAuthStateChanged(
 
     if (!user) {
 
-    renderLoginScreen();
-
       authEl.innerHTML =
         '<div class="center-screen">' +
         '<h2>🔒 Login Required</h2>' +
@@ -490,8 +344,6 @@ onAuthStateChanged(
         !whitelistSnap.exists()
       ) {
 
-      renderAccessDenied(email);
-
         authEl.innerHTML =
           '<div class="error-box">' +
           '<h2>⛔ Access Denied</h2>' +
@@ -513,11 +365,7 @@ onAuthStateChanged(
 
       renderRisk();
 
-      bootAuthenticatedApp();
-
     } catch (err) {
-
-    renderAuthError(err);
 
       console.error(err);
 
@@ -549,12 +397,7 @@ function scoreColor(score) {
   return "red";
 }
 
-
 function renderOverview() {
-
-  // ==========================================
-  // LEADERSHIP STRIP
-  // ==========================================
 
   const target =
     document.getElementById(
@@ -562,61 +405,28 @@ function renderOverview() {
     );
 
   target.innerHTML = rows
-    .slice(0, 10)
+    .slice(0, 20)
     .map((r) => {
 
-      const score =
-        Number(
-          r.New_Composite_Score || 0
-        ).toFixed(1);
-
-      const rs =
-        Number(
-          r.RS_Rank || 0
-        ).toFixed(1);
-
-      const eps =
-        Number(
-          r.EPS_TTM || 0
-        ).toFixed(2);
-
-      const inst =
-        Number(
-          r.Inst_Accumulation || 0
-        ).toFixed(2);
-
       return (
-
         '<div class="card ' +
-
         scoreColor(
           r.New_Composite_Score
         ) +
-
         '">' +
 
-        '<h2>' +
+        '<h3>' +
         r.Ticker +
-        '</h2>' +
+        '</h3>' +
 
         '<div class="metric">' +
-        '<strong>Composite Score:</strong> ' +
-        score +
+        'Score: ' +
+        r.New_Composite_Score +
         '</div>' +
 
         '<div class="metric">' +
-        '<strong>RS Rank:</strong> ' +
-        rs +
-        '</div>' +
-
-        '<div class="metric">' +
-        '<strong>EPS:</strong> ' +
-        eps +
-        '</div>' +
-
-        '<div class="metric">' +
-        '<strong>Institutional Accumulation:</strong> ' +
-        inst +
+        'RS Rank: ' +
+        r.RS_Rank +
         '</div>' +
 
         '</div>'
@@ -624,112 +434,11 @@ function renderOverview() {
 
     })
     .join("");
-
-  // ==========================================
-  // ANALYTICS TABLE
-  // ==========================================
-
-  renderAnalyticsTable(rows);
 }
-
 
 // ======================================================
 // RISK
 // ======================================================
-function renderAnalyticsTable(
-  dataRows
-) {
-
-  // ==========================================
-  // SEARCH INPUT
-  // ==========================================
-
-  const searchInput =
-    document.getElementById(
-      "tickerSearch"
-    );
-
-  // ==========================================
-  // TABLE INITIAL RENDER
-  // ==========================================
-
-  renderAnalyticsTableRows(
-    dataRows
-  );
-
-  // ==========================================
-  // LIVE SEARCH
-  // ==========================================
-
-  searchInput.oninput = () => {
-
-    const term =
-      searchInput.value
-        .toLowerCase();
-
-    const filtered =
-      rows.filter((r) => {
-
-        return (
-          r.Ticker
-            .toLowerCase()
-            .includes(term)
-        );
-      });
-
-    renderAnalyticsTableRows(
-      filtered
-    );
-  };
-}
-
-function renderAnalyticsTableRows(
-  dataRows
-) {
-
-  const body =
-    document.getElementById(
-      "analyticsTableBody"
-    );
-
-  body.innerHTML =
-    dataRows
-      .map((r) => {
-
-        const score =
-          Number(
-            r.New_Composite_Score || 0
-          ).toFixed(1);
-
-        const rs =
-          Number(
-            r.RS_Rank || 0
-          ).toFixed(1);
-
-        const rsi =
-          Number(
-            r.RSI_14Day || 0
-          ).toFixed(1);
-
-        const slope =
-          Number(
-            r.MA_Slope_50 || 0
-          ).toFixed(2);
-
-        const drawdown =
-          Number(
-            r.Drawdown_pct || 0
-          ).toFixed(1);
-
-        const beta =
-          Number(
-            r.Beta || 0
-          ).toFixed(2);
-
-       return ( '<tr>' + '<td style="padding:12px;">' + r.Ticker + '</td>' + '<td style="padding:12px;">' + score + '</td>' + '<td style="padding:12px;">' + rs + '</td>' + '<td style="padding:12px;">' + rsi + '</td>' + '<td style="padding:12px;">' + slope + '</td>' + '<td style="padding:12px;">' + drawdown + '</td>' + '<td style="padding:12px;">' + beta + '</td>' + '</tr>' );
-      })
-      .join("");
-}
 
 function renderRisk() {
 
