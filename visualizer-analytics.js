@@ -521,25 +521,58 @@ function renderOverview() {
     .slice(0, 20)
     .map((r) => {
 
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        ).toFixed(1);
+
+      const rs =
+        Number(
+          r.RS_Rank || 0
+        ).toFixed(1);
+
+      const eps =
+        Number(
+          r.EPS_TTM || 0
+        ).toFixed(2);
+
+      const inst =
+        Number(
+          r.Inst_Accumulation || 0
+        ).toFixed(2);
+
       return (
+
         '<div class="card ' +
+
         scoreColor(
           r.New_Composite_Score
         ) +
+
         '">' +
 
-        '<h3>' +
+        '<h2>' +
         r.Ticker +
-        '</h3>' +
+        '</h2>' +
 
         '<div class="metric">' +
-        'Score: ' +
-        r.New_Composite_Score +
+        '<strong>Composite Score:</strong> ' +
+        score +
         '</div>' +
 
         '<div class="metric">' +
-        'RS Rank: ' +
-        r.RS_Rank +
+        '<strong>RS Rank:</strong> ' +
+        rs +
+        '</div>' +
+
+        '<div class="metric">' +
+        '<strong>EPS:</strong> ' +
+        eps +
+        '</div>' +
+
+        '<div class="metric">' +
+        '<strong>Institutional Accumulation:</strong> ' +
+        inst +
         '</div>' +
 
         '</div>'
@@ -658,21 +691,52 @@ function renderTrendChart() {
   if (SERVE) {
 
     http
-      .createServer(
-        (req, res) => {
+  .createServer(
+    (req, res) => {
 
-          res.writeHead(
-            200,
-            {
-              "Content-Type":
-                "text/html"
-            }
-          );
+      // ==========================================
+      // API: analytics runtime data
+      // ==========================================
 
-          res.end(html);
+      if (
+        req.url ===
+        "/api/analytics-data.js"
+      ) {
 
+        const payload =
+          `
+window.__ANALYTICS__ = ${JSON.stringify(data)};
+`;
+
+        res.writeHead(
+          200,
+          {
+            "Content-Type":
+              "application/javascript"
+          }
+        );
+
+        res.end(payload);
+
+        return;
+      }
+
+      // ==========================================
+      // DEFAULT: analytics html
+      // ==========================================
+
+      res.writeHead(
+        200,
+        {
+          "Content-Type":
+            "text/html"
         }
-      )
+      );
+
+      res.end(html);
+
+    }
+  )
       .listen(
         3000,
         "0.0.0.0",
