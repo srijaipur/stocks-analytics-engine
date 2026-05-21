@@ -164,10 +164,7 @@ canvas {
   <!-- LEADERSHIP STRIP -->
   <!-- ===================================== -->
 
-  <div
-    class="grid"
-    id="overviewGrid"
-  ></div>
+  <div style=" display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:16px; flex-wrap:wrap; " > <h2 style=" margin:0; font-size:20px; " > Leadership </h2> <button id="toggleLeadersBtn" class="tab-btn" > Show All Leaders </button> </div> <div class="grid" id="overviewGrid" ></div>
 
   <!-- ===================================== -->
   <!-- SEARCH -->
@@ -261,14 +258,7 @@ canvas {
 
 </div>
 
-<div
-  id="trends"
-  class="page"
->
-
-  <canvas id="trendChart"></canvas>
-
-</div>
+<div id="trends" class="page" > <!-- ===================================== --> <!-- MOMENTUM DELTA LADDER --> <!-- ===================================== --> <div class="card" style=" margin-bottom:24px; " > <h2 style=" margin-top:0; margin-bottom:16px; " > Momentum Delta Ladder </h2> <div style=" overflow-x:auto; " > <table id="momentumTable" style=" width:100%; border-collapse:collapse; min-width:900px; " > <thead> <tr style=" background:#1d2330; text-align:left; " > <th style="padding:12px;">Ticker</th> <th style="padding:12px;">Delta</th> <th style="padding:12px;">Composite</th> <th style="padding:12px;">RSI</th> <th style="padding:12px;">MA Slope</th> </tr> </thead> <tbody id="momentumTableBody"> </tbody> </table> </div> </div> <!-- ===================================== --> <!-- QUADRANT CHART --> <!-- ===================================== --> <div class="card" style=" margin-bottom:24px; " > <h2 style=" margin-top:0; margin-bottom:16px; " > Composite vs MA Slope </h2> <canvas id="quadrantChart"></canvas> </div> <!-- ===================================== --> <!-- RSI REGIME --> <!-- ===================================== --> <div class="card" > <h2 style=" margin-top:0; margin-bottom:16px; " > RSI Regime Structure </h2> <canvas id="rsiRegimeChart"></canvas> </div> </div>
 
 </div>
 <script src="/api/analytics-data.js"></script>
@@ -333,6 +323,21 @@ const authEl =
 
 const appEl =
   document.getElementById("app");
+
+  // ====================================================== 
+  // // LEADERSHIP STATE
+  // 
+   // ====================================================== 
+   let showAllLeaders = false;
+
+   
+const toggleLeadersBtn =
+  document.getElementById(
+    "toggleLeadersBtn"
+  );
+
+
+
 
   // ======================================================
 // AUTH UI HELPERS
@@ -421,17 +426,7 @@ document
         .getElementById(tab)
         .classList.add("active");
 
-      if (tab === "trends") {
-
-        const existing =
-          Chart.getChart(
-            "trendChart"
-          );
-
-        if (!existing) {
-          renderTrendChart();
-        }
-      }
+      if (tab === "trends") { renderTrendChart(); }
     };
   });
 
@@ -515,6 +510,18 @@ onAuthStateChanged(
 
       bootAuthenticatedApp();
 
+      
+toggleLeadersBtn.onclick =
+  () => {
+
+    showAllLeaders =
+      !showAllLeaders;
+
+    renderOverview();
+  };
+
+
+
     } catch (err) {
 
     renderAuthError(err);
@@ -562,7 +569,7 @@ function renderOverview() {
     );
 
   target.innerHTML = rows
-    .slice(0, 10)
+    .slice( 0, showAllLeaders ? rows.length : 10 )
     .map((r) => {
 
       const score =
@@ -628,6 +635,8 @@ function renderOverview() {
   // ==========================================
   // ANALYTICS TABLE
   // ==========================================
+
+  toggleLeadersBtn.innerText = showAllLeaders ? "Collapse Leaders" : "Show All Leaders";
 
   renderAnalyticsTable(rows);
 }
@@ -772,41 +781,392 @@ function renderRisk() {
 // TREND CHART
 // ======================================================
 
+// ======================================================
+// TRENDS
+// ======================================================
+
 function renderTrendChart() {
+
+  renderMomentumLadder();
+
+  renderQuadrantChart();
+
+  renderRSIRegimeChart();
+}
+
+// ======================================================
+// MOMENTUM LADDER
+// ======================================================
+
+function renderMomentumLadder() {
+
+  const body =
+    document.getElementById(
+      "momentumTableBody"
+    );
+
+  if (!body) {
+    return;
+  }
+
+  const sorted =
+    [...rows].sort(
+      (a, b) => {
+
+        return (
+          Number(
+            b.Daily_Composite_Score_delta || 0
+          ) -
+
+          Number(
+            a.Daily_Composite_Score_delta || 0
+          )
+        );
+      }
+    );
+
+  body.innerHTML =
+    sorted
+      .map((r) => {
+
+        const delta =
+          Number(
+            r.Daily_Composite_Score_delta || 0
+          ).toFixed(2);
+
+        const score =
+          Number(
+            r.New_Composite_Score || 0
+          ).toFixed(1);
+
+        const rsi =
+          Number(
+            r.RSI_14Day || 0
+          ).toFixed(1);
+
+        const slope =
+          Number(
+            r.MA_Slope_50 || 0
+          ).toFixed(2);
+
+        let deltaColor =
+          "#888";
+
+        if (Number(delta) > 0) {
+          deltaColor = "#16a34a";
+        }
+
+        if (Number(delta) < 0) {
+          deltaColor = "#dc2626";
+        }
+
+        return (
+
+          '<tr>' +
+
+          '<td style="padding:12px;">' +
+          r.Ticker +
+          '</td>' +
+
+          '<td style="padding:12px;color:' +
+          deltaColor +
+          ';">' +
+          delta +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          score +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          rsi +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          slope +
+          '</td>' +
+
+          '</tr>'
+        );
+
+      })
+      .join("");
+}
+
+// ======================================================
+// QUADRANT CHART
+// ======================================================
+
+
+function renderQuadrantChart() {
+
+  const existing =
+    Chart.getChart(
+      "quadrantChart"
+    );
+
+  if (existing) {
+    existing.destroy();
+  }
 
   const ctx =
     document.getElementById(
-      "trendChart"
+      "quadrantChart"
     );
+
+  if (!ctx) {
+    return;
+  }
+
+  const quadrantData =
+    rows.map((r) => {
+
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        );
+
+   
+const rawSlope =
+  Number(
+    r.MA_Slope_50 || 0
+  );
+
+const slope =
+  rawSlope * 100;
+
+
+
+      const rs =
+        Number(
+          r.RS_Rank || 0
+        );
+
+      let color =
+        "#888";
+
+      if (
+        score >= 80 &&
+        slope > 0
+      ) {
+        color = "#16a34a";
+      }
+
+      else if (
+        score >= 60
+      ) {
+        color = "#eab308";
+      }
+
+      else {
+        color = "#dc2626";
+      }
+
+      return {
+
+        label:
+          r.Ticker,
+
+        x:
+          slope,
+
+        y:
+          score,
+
+        radius:
+          Math.max(
+            4,
+            rs / 20
+          ),
+
+        backgroundColor:
+          color
+      };
+    });
+   
+
+
+
 
   new Chart(ctx, {
 
-    type: "bar",
+    type: "bubble",
 
     data: {
 
-      labels: rows
-        .slice(0, 15)
-        .map(
-          (r) => r.Ticker
-        ),
-
       datasets: [{
 
-        label: "Score",
+        label:
+          "Leadership Structure",
 
-        data: rows
-          .slice(0, 15)
-          .map(
-            (r) =>
-              r.New_Composite_Score
-          )
+        data:
+          quadrantData
       }]
+    },
+
+    options: {
+
+      responsive: true,
+
+      plugins: {
+
+        legend: {
+          display: false
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            label:
+              function(context) {
+
+                const point =
+                  context.raw;
+
+                return (
+                  point.label +
+                  " | Score: " +
+                  point.y +
+                  " | Slope: " +
+                  point.x
+                );
+              }
+          }
+        }
+      },
+
+      scales: {
+
+        x: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "MA Slope 50"
+          }
+        },
+
+        y: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "Composite Score"
+          },
+
+          min: 0,
+
+          max: 100
+        }
+      }
     }
   });
 }
 
-</script>
 
-</body>
-</html>
+
+// ======================================================
+// RSI REGIME
+// ======================================================
+
+
+function renderRSIRegimeChart() {
+
+  const existing =
+    Chart.getChart(
+      "rsiRegimeChart"
+    );
+
+  if (existing) {
+    existing.destroy();
+  }
+
+  const ctx =
+    document.getElementById(
+      "rsiRegimeChart"
+    );
+
+  if (!ctx) {
+    return;
+  }
+
+  let weak = 0;
+  let neutral = 0;
+  let strong = 0;
+
+  rows.forEach((r) => {
+
+    const rsi =
+      Number(
+        r.RSI_14Day || 0
+      );
+
+    if (rsi < 40) {
+      weak++;
+    }
+
+    else if (rsi <= 60) {
+      neutral++;
+    }
+
+    else {
+      strong++;
+    }
+  });
+ 
+console.log({
+  weak,
+  neutral,
+  strong
+});
+
+
+
+  new Chart(ctx, {
+
+    type: "doughnut",
+
+    data: {
+
+      labels: [
+        "Weak",
+        "Neutral",
+        "Strong"
+      ],
+
+      datasets: [{
+
+        data: [
+          weak,
+          neutral,
+          strong
+        ],
+
+        backgroundColor: [
+          "#dc2626",
+          "#eab308",
+          "#16a34a"
+        ]
+      }]
+    },
+
+    options: {
+
+      responsive: true,
+
+      plugins: {
+
+        legend: {
+
+          position: "bottom"
+        }
+      }
+    }
+  });
+}
+</script> </body> </html>
