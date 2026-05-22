@@ -258,10 +258,217 @@ canvas {
 
 </div>
 
-<div id="trends" class="page" > <!-- ===================================== --> <!-- MOMENTUM DELTA LADDER --> <!-- ===================================== --> <div class="card" style=" margin-bottom:24px; " > <h2 style=" margin-top:0; margin-bottom:16px; " > Momentum Delta Ladder </h2> <div style=" overflow-x:auto; " > <table id="momentumTable" style=" width:100%; border-collapse:collapse; min-width:900px; " > <thead> <tr style=" background:#1d2330; text-align:left; " > <th style="padding:12px;">Ticker</th> <th style="padding:12px;">Delta</th> <th style="padding:12px;">Composite</th> <th style="padding:12px;">RSI</th> <th style="padding:12px;">MA Slope</th> </tr> </thead> <tbody id="momentumTableBody"> </tbody> </table> </div> </div> <!-- ===================================== --> <!-- QUADRANT CHART --> <!-- ===================================== --> <div class="card" style=" margin-bottom:24px; " > <h2 style=" margin-top:0; margin-bottom:16px; " > Composite vs MA Slope </h2> <canvas id="quadrantChart"></canvas> </div> <!-- ===================================== --> <!-- RSI REGIME --> <!-- ===================================== --> <div class="card" > <h2 style=" margin-top:0; margin-bottom:16px; " > RSI Regime Structure </h2> <canvas id="rsiRegimeChart"></canvas> </div> </div>
+<div
+  id="trends"
+  class="page"
+>
+
+  <!-- ===================================== -->
+  <!-- MOMENTUM DELTA LADDER -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+    style="
+      margin-bottom:24px;
+    "
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:16px;
+      "
+    >
+      Momentum Delta Ladder
+    </h2>
+
+    <div
+      style="
+        overflow-x:auto;
+      "
+    >
+
+      <table
+        id="momentumTable"
+        style="
+          width:100%;
+          border-collapse:collapse;
+          min-width:900px;
+        "
+      >
+
+        <thead>
+
+          <tr
+            style="
+              background:#1d2330;
+              text-align:left;
+            "
+          >
+
+            <th style="padding:12px;">
+              Ticker
+            </th>
+
+            <th style="padding:12px;">
+              Delta
+            </th>
+
+            <th style="padding:12px;">
+              Composite
+            </th>
+
+            <th style="padding:12px;">
+              RSI
+            </th>
+
+            <th style="padding:12px;">
+              MA Slope
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody
+          id="momentumTableBody"
+        >
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- LEADERSHIP MOMENTUM QUADRANTS -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+    style="
+      margin-bottom:24px;
+    "
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:10px;
+      "
+    >
+      Leadership Momentum Quadrants
+    </h2>
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(180px,1fr)
+          );
+        gap:8px;
+        margin-bottom:18px;
+        font-size:13px;
+        color:#bbb;
+      "
+    >
+
+      <div>
+        🟢 <strong>Top Right</strong><br>
+        Leadership
+      </div>
+
+      <div>
+        🟡 <strong>Bottom Right</strong><br>
+        Emerging Strength
+      </div>
+
+      <div>
+        🟠 <strong>Top Left</strong><br>
+        Exhaustion
+      </div>
+
+      <div>
+        🔴 <strong>Bottom Left</strong><br>
+        Weakness
+      </div>
+
+    </div>
+
+    <canvas
+      id="quadrantChart"
+    ></canvas>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- RSI MARKET REGIME MAP -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:10px;
+      "
+    >
+      RSI Market Regime Map
+    </h2>
+
+    <div
+      style="
+        margin-bottom:16px;
+        font-size:13px;
+        color:#bbb;
+        line-height:1.6;
+      "
+    >
+      Each point represents one ticker
+      in the current analytics universe.
+      RSI regimes are color-coded for
+      breadth and participation analysis.
+    </div>
+
+    <div
+      style="
+        display:flex;
+        gap:18px;
+        flex-wrap:wrap;
+        margin-bottom:14px;
+        font-size:13px;
+        color:#bbb;
+      "
+    >
+
+      <div>
+        🟢 Strong RSI &gt; 60
+      </div>
+
+      <div>
+        🟡 Neutral RSI 40–60
+      </div>
+
+      <div>
+        🔴 Weak RSI &lt; 40
+      </div>
+
+    </div>
+
+    <canvas
+      id="rsiRegimeChart"
+      height="130"
+    ></canvas>
+
+  </div>
 
 </div>
-<script src="/api/analytics-data.js"></script>
 <script type="module">
 
 // ======================================================
@@ -406,7 +613,7 @@ function bootAuthenticatedApp() {
 // ======================================================
 
 document
-  .querySelectorAll(".tab-btn")
+ .querySelectorAll("[data-tab]")
   .forEach((btn) => {
 
     btn.onclick = () => {
@@ -900,14 +1107,25 @@ function renderMomentumLadder() {
 
 function renderQuadrantChart() {
 
+
+
+  // ==========================================
+  // DESTROY EXISTING INSTANCE
+  // ==========================================
+
   const existing =
     Chart.getChart(
       "quadrantChart"
     );
 
   if (existing) {
+
     existing.destroy();
   }
+
+  // ==========================================
+  // GET CANVAS
+  // ==========================================
 
   const ctx =
     document.getElementById(
@@ -918,6 +1136,10 @@ function renderQuadrantChart() {
     return;
   }
 
+  // ==========================================
+  // BUILD QUADRANT DATA
+  // ==========================================
+
   const quadrantData =
     rows.map((r) => {
 
@@ -926,16 +1148,10 @@ function renderQuadrantChart() {
           r.New_Composite_Score || 0
         );
 
-   
-const rawSlope =
-  Number(
-    r.MA_Slope_50 || 0
-  );
-
-const slope =
-  rawSlope * 100;
-
-
+      const slope =
+        Number(
+          r.Daily_Composite_Score_delta || 0
+        );
 
       const rs =
         Number(
@@ -945,20 +1161,27 @@ const slope =
       let color =
         "#888";
 
+      // ======================================
+      // QUADRANT COLOR LOGIC
+      // ======================================
+
       if (
         score >= 80 &&
         slope > 0
       ) {
+
         color = "#16a34a";
       }
 
       else if (
         score >= 60
       ) {
+
         color = "#eab308";
       }
 
       else {
+
         color = "#dc2626";
       }
 
@@ -983,10 +1206,16 @@ const slope =
           color
       };
     });
-   
 
+  // ==========================================
+  // VALIDATION LOG
+  // ==========================================
 
+  
 
+  // ==========================================
+  // CHART
+  // ==========================================
 
   new Chart(ctx, {
 
@@ -1011,6 +1240,7 @@ const slope =
       plugins: {
 
         legend: {
+
           display: false
         },
 
@@ -1028,7 +1258,7 @@ const slope =
                   point.label +
                   " | Score: " +
                   point.y +
-                  " | Slope: " +
+                  " | Momentum: " +
                   point.x
                 );
               }
@@ -1038,6 +1268,10 @@ const slope =
 
       scales: {
 
+        // ======================================
+        // X AXIS
+        // ======================================
+
         x: {
 
           title: {
@@ -1045,9 +1279,40 @@ const slope =
             display: true,
 
             text:
-              "MA Slope 50"
+              "Momentum Delta",
+
+            color:
+              "#ddd"
+          },
+
+          min: -1.5,
+
+          max: 1.5,
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.18)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
           }
         },
+
+        // ======================================
+        // Y AXIS
+        // ======================================
 
         y: {
 
@@ -1056,12 +1321,35 @@ const slope =
             display: true,
 
             text:
-              "Composite Score"
+              "Composite Score",
+
+            color:
+              "#ddd"
           },
 
           min: 0,
 
-          max: 100
+          max: 100,
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.12)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
+          }
         }
       }
     }
@@ -1077,14 +1365,23 @@ const slope =
 
 function renderRSIRegimeChart() {
 
+  // ==========================================
+  // DESTROY EXISTING CHART
+  // ==========================================
+
   const existing =
     Chart.getChart(
       "rsiRegimeChart"
     );
 
   if (existing) {
+
     existing.destroy();
   }
+
+  // ==========================================
+  // GET CANVAS
+  // ==========================================
 
   const ctx =
     document.getElementById(
@@ -1092,66 +1389,97 @@ function renderRSIRegimeChart() {
     );
 
   if (!ctx) {
+
     return;
   }
 
-  let weak = 0;
-  let neutral = 0;
-  let strong = 0;
+  // ==========================================
+  // BUILD RSI POINTS
+  // ==========================================
 
-  rows.forEach((r) => {
+  const scatterData =
+    rows.map((r, index) => {
 
-    const rsi =
-      Number(
-        r.RSI_14Day || 0
-      );
+      const rsi =
+  Number(
+    r.RSI || 0
+  );
 
-    if (rsi < 40) {
-      weak++;
-    }
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        );
 
-    else if (rsi <= 60) {
-      neutral++;
-    }
+      let color =
+        "#888";
 
-    else {
-      strong++;
-    }
-  });
- 
-console.log({
-  weak,
-  neutral,
-  strong
-});
+      // ==============================
+      // REGIME COLORS
+      // ==============================
 
+      if (rsi > 60) {
 
+        color = "#16a34a";
+      }
+
+      else if (rsi >= 40) {
+
+        color = "#eab308";
+      }
+
+      else {
+
+        color = "#dc2626";
+      }
+
+      return {
+
+               x:
+          index + 1,
+
+        y:
+          rsi,
+
+        r:
+          Math.max(
+            5,
+            score / 18
+          ),
+
+        ticker:
+          r.Ticker,
+
+        score:
+          score,
+
+        backgroundColor:
+          color
+      };
+    });
+
+  // ==========================================
+  // VALIDATION
+  // ==========================================
+
+  
+
+  // ==========================================
+  // CHART
+  // ==========================================
 
   new Chart(ctx, {
 
-    type: "doughnut",
+    type: "bubble",
 
     data: {
 
-      labels: [
-        "Weak",
-        "Neutral",
-        "Strong"
-      ],
-
       datasets: [{
 
-        data: [
-          weak,
-          neutral,
-          strong
-        ],
+        label:
+          "RSI Universe",
 
-        backgroundColor: [
-          "#dc2626",
-          "#eab308",
-          "#16a34a"
-        ]
+        data:
+          scatterData
       }]
     },
 
@@ -1163,10 +1491,139 @@ console.log({
 
         legend: {
 
-          position: "bottom"
+          display: false
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            label:
+              function(context) {
+
+                const point =
+                  context.raw;
+
+                return (
+                  point.ticker +
+                  " | RSI: " +
+                  point.y.toFixed(1) +
+                  " | Score: " +
+                  point.score.toFixed(1)
+                );
+              }
+          }
+        }
+      },
+
+      scales: {
+
+        // ======================================
+        // X AXIS
+        // ======================================
+
+        x: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "Universe Members",
+
+            color:
+              "#ddd"
+          },
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.08)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#999",
+
+            maxTicksLimit: 12
+          }
+        },
+
+        // ======================================
+        // Y AXIS
+        // ======================================
+
+        y: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "RSI-14",
+
+            color:
+              "#ddd"
+          },
+
+          min: 0,
+
+          max: 100,
+
+          grid: {
+
+            color:
+              function(context) {
+
+                const value =
+                  context.tick.value;
+
+                // ==========================
+                // HIGHLIGHT THRESHOLDS
+                // ==========================
+
+                if (
+                  value === 40 ||
+                  value === 60
+                ) {
+
+                  return (
+                    "rgba(255,255,255,0.35)"
+                  );
+                }
+
+                return (
+                  "rgba(255,255,255,0.08)"
+                );
+              }
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
+          }
         }
       }
     }
   });
 }
+
 </script> </body> </html>
