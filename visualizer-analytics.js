@@ -582,6 +582,9 @@ canvas {
   </div>
 
 </div>
+
+<script src="/api/analytics-data.js"></script>
+
 <script type="module">
 
 // ======================================================
