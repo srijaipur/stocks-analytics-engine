@@ -253,6 +253,13 @@ canvas {
   </button>
 
   <button
+  class="tab-btn"
+  data-tab="signals"
+>
+  Signals
+</button>
+
+  <button
     class="tab-btn"
     data-tab="risk"
   >
@@ -354,6 +361,49 @@ canvas {
       </tbody>
 
     </table>
+
+  </div>
+
+</div>
+
+
+<div
+  id="signals"
+  class="page"
+>
+
+  <div
+    class="card"
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:12px;
+      "
+    >
+      Institutional Signals
+    </h2>
+
+    <div
+      style="
+        color:#bbb;
+        font-size:14px;
+        line-height:1.7;
+      "
+    >
+      Signals intelligence layer
+      initializing...
+    </div>
+
+    <div
+      id="signalsGrid"
+      class="grid"
+      style="
+        margin-top:18px;
+      "
+    >
+    </div>
 
   </div>
 
@@ -721,6 +771,8 @@ function bootAuthenticatedApp() {
 
   renderOverview();
 
+  renderSignals();
+
   renderRisk();
 }
 
@@ -964,6 +1016,41 @@ function renderOverview() {
   renderAnalyticsTable(rows);
 }
 
+// ======================================================
+// SIGNALS
+// ======================================================
+
+function renderSignals() {
+
+  const grid =
+    document.getElementById(
+      "signalsGrid"
+    );
+
+  if (!grid) {
+
+    return;
+  }
+
+  grid.innerHTML =
+    `
+<div
+  class="card"
+>
+
+  <h3>
+    Signals Runtime Active
+  </h3>
+
+  <div>
+    Institutional signals layer
+    initialized successfully.
+  </div>
+
+</div>
+`;
+
+}
 
 // ======================================================
 // RISK
