@@ -6,6 +6,8 @@ import http from "http";
 
 import { firebaseConfig } from "./firebase/firebaseConfig.js";
 
+
+
 const __dirname = path.dirname(
   fileURLToPath(import.meta.url)
 );
@@ -28,6 +30,8 @@ const SERVE =
 // ======================================================
 
 async function readData() {
+
+  
 
   const wb = new ExcelJS.Workbook();
 
@@ -681,11 +685,11 @@ const provider =
 // from /api/analytics-data.js
 
 const data =
-  window.__ANALYTICS__ || {
-    rows: []
-  };
+  window.__ANALYTICS__ || { rows: [] };
 
-const rows = data.rows || [];
+const rows = data.rows;
+
+//const rows = data.rows || [];
 
 // ======================================================
 // DOM REFERENCES
@@ -1022,34 +1026,130 @@ function renderOverview() {
 
 function renderSignals() {
 
+
+  const rows =
+    (window.__ANALYTICS__ &&
+     window.__ANALYTICS__.rows) || [];
+
+  if (!Array.isArray(rows)) return;
+
   const grid =
-    document.getElementById(
-      "signalsGrid"
-    );
+    document.getElementById("signalsGrid");
 
-  if (!grid) {
+  if (!grid) return;
+  
 
-    return;
+  // ============================
+  // HELPERS
+  // ============================
+
+  function topN(
+    arr,
+    fn,
+    n = 3
+  ) {
+
+    return [...arr]
+      .sort(
+        (a, b) =>
+          fn(b) - fn(a)
+      )
+      .slice(0, n);
   }
 
+  function card(title, items, color) {
+
+  return (
+    '<div class="card">' +
+
+    '<h3 style="color:' + color + '">' +
+    title +
+    '</h3>' +
+
+    '<div style="margin-top:10px">' +
+
+    items.map(i =>
+      '<div style="margin:6px 0">' +
+        '<b>' + i.Ticker + '</b>' +
+        '<span style="color:#aaa">' +
+          ' (' + i.New_Composite_Score + ')' +
+        '</span>' +
+      '</div>'
+    ).join("") +
+
+    '</div>' +
+
+    '</div>'
+  );
+}
+  
+  
+
+  // ============================
+  // SIGNAL LOGIC (PHASE 1)
+  // ============================
+
+  const leadership =
+    topN(
+      rows,
+      r =>
+        (r.New_Composite_Score || 0) +
+        (r.Daily_Composite_Score_delta || 0)
+    );
+
+  const accumulation =
+    topN(
+      rows,
+      r =>
+        (r.Inst_Accumulation || 0) +
+        (r.Net_Inst || 0)
+    );
+
+  const momentum =
+    topN(
+      rows,
+      r =>
+        (r.RSI || 0) +
+        (r.MA_Slope || 0)
+    );
+
+  const risk =
+    topN(
+      rows,
+      r =>
+        (r.Drawdown_pct || 0) -
+        (r.New_Composite_Score || 0)
+    );
+
+  // ============================
+  // RENDER
+  // ============================
+
   grid.innerHTML =
-    `
-<div
-  class="card"
->
 
-  <h3>
-    Signals Runtime Active
-  </h3>
+    card(
+      "Leadership Expansion",
+      leadership,
+      "#4caf50"
+    ) +
 
-  <div>
-    Institutional signals layer
-    initialized successfully.
-  </div>
+    card(
+      "Institutional Accumulation",
+      accumulation,
+      "#2196f3"
+    ) +
 
-</div>
-`;
+    card(
+      "Momentum Continuation",
+      momentum,
+      "#ff9800"
+    ) +
 
+    card(
+      "Risk Deterioration",
+      risk,
+      "#f44336"
+    );
 }
 
 // ======================================================
@@ -1829,7 +1929,11 @@ function renderRSIRegimeChart() {
   });
 }
 
-</script> </body> </html>`; }
+</script>
+</body>
+</html>
+`;
+}
 // ======================================================
 // MAIN
 // ======================================================

@@ -140,6 +140,13 @@ canvas {
   </button>
 
   <button
+  class="tab-btn"
+  data-tab="signals"
+>
+  Signals
+</button>
+
+  <button
     class="tab-btn"
     data-tab="risk"
   >
@@ -241,6 +248,49 @@ canvas {
       </tbody>
 
     </table>
+
+  </div>
+
+</div>
+
+
+<div
+  id="signals"
+  class="page"
+>
+
+  <div
+    class="card"
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:12px;
+      "
+    >
+      Institutional Signals
+    </h2>
+
+    <div
+      style="
+        color:#bbb;
+        font-size:14px;
+        line-height:1.7;
+      "
+    >
+      Signals intelligence layer
+      initializing...
+    </div>
+
+    <div
+      id="signalsGrid"
+      class="grid"
+      style="
+        margin-top:18px;
+      "
+    >
+    </div>
 
   </div>
 
@@ -518,11 +568,11 @@ const provider =
 // from /api/analytics-data.js
 
 const data =
-  window.__ANALYTICS__ || {
-    rows: []
-  };
+  window.__ANALYTICS__ || { rows: [] };
 
-const rows = data.rows || [];
+const rows = data.rows;
+
+//const rows = data.rows || [];
 
 // ======================================================
 // DOM REFERENCES
@@ -607,6 +657,8 @@ function bootAuthenticatedApp() {
   );
 
   renderOverview();
+
+  renderSignals();
 
   renderRisk();
 }
@@ -851,6 +903,137 @@ function renderOverview() {
   renderAnalyticsTable(rows);
 }
 
+// ======================================================
+// SIGNALS
+// ======================================================
+
+function renderSignals() {
+
+
+  const rows =
+    (window.__ANALYTICS__ &&
+     window.__ANALYTICS__.rows) || [];
+
+  if (!Array.isArray(rows)) return;
+
+  const grid =
+    document.getElementById("signalsGrid");
+
+  if (!grid) return;
+  
+
+  // ============================
+  // HELPERS
+  // ============================
+
+  function topN(
+    arr,
+    fn,
+    n = 3
+  ) {
+
+    return [...arr]
+      .sort(
+        (a, b) =>
+          fn(b) - fn(a)
+      )
+      .slice(0, n);
+  }
+
+  function card(title, items, color) {
+
+  return (
+    '<div class="card">' +
+
+    '<h3 style="color:' + color + '">' +
+    title +
+    '</h3>' +
+
+    '<div style="margin-top:10px">' +
+
+    items.map(i =>
+      '<div style="margin:6px 0">' +
+        '<b>' + i.Ticker + '</b>' +
+        '<span style="color:#aaa">' +
+          ' (' + i.New_Composite_Score + ')' +
+        '</span>' +
+      '</div>'
+    ).join("") +
+
+    '</div>' +
+
+    '</div>'
+  );
+}
+  
+  
+
+  // ============================
+  // SIGNAL LOGIC (PHASE 1)
+  // ============================
+
+  const leadership =
+    topN(
+      rows,
+      r =>
+        (r.New_Composite_Score || 0) +
+        (r.Daily_Composite_Score_delta || 0)
+    );
+
+  const accumulation =
+    topN(
+      rows,
+      r =>
+        (r.Inst_Accumulation || 0) +
+        (r.Net_Inst || 0)
+    );
+
+  const momentum =
+    topN(
+      rows,
+      r =>
+        (r.RSI || 0) +
+        (r.MA_Slope || 0)
+    );
+
+  const risk =
+    topN(
+      rows,
+      r =>
+        (r.Drawdown_pct || 0) -
+        (r.New_Composite_Score || 0)
+    );
+
+  // ============================
+  // RENDER
+  // ============================
+
+  grid.innerHTML =
+
+    card(
+      "Leadership Expansion",
+      leadership,
+      "#4caf50"
+    ) +
+
+    card(
+      "Institutional Accumulation",
+      accumulation,
+      "#2196f3"
+    ) +
+
+    card(
+      "Momentum Continuation",
+      momentum,
+      "#ff9800"
+    ) +
+
+    card(
+      "Risk Deterioration",
+      risk,
+      "#f44336"
+    );
+}
 
 // ======================================================
 // RISK
@@ -1629,4 +1812,6 @@ function renderRSIRegimeChart() {
   });
 }
 
-</script> </body> </html>
+</script>
+</body>
+</html>

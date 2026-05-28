@@ -1,0 +1,200 @@
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import http from "http";
+
+import { firebaseConfig } from "./firebase/firebaseConfig.js";
+
+
+
+const __dirname = path.dirname(
+  fileURLToPath(import.meta.url)
+);
+
+const WORKBOOK_PATH = path.resolve(
+  __dirname,
+  "data/stocks.xlsx"
+);
+
+const OUTPUT_PATH = path.resolve(
+  __dirname,
+  "data/analytics.html"
+);
+
+const SERVE =
+  process.argv.includes("--serve");
+
+// ======================================================
+// READ EXCEL
+// ======================================================
+
+async function readData() {
+
+  
+
+  const wb = new ExcelJS.Workbook();
+
+  await wb.xlsx.readFile(WORKBOOK_PATH);
+
+  //const rows = [];
+
+  const sheet =
+    wb.getWorksheet("ScoresCurrent");
+
+  if (!sheet) {
+
+    throw new Error(
+      "ScoresCurrent worksheet missing"
+    );
+  }
+
+  sheet.eachRow((row, i) => {
+
+    if (i === 1) return;
+
+    const vals = row.values.slice(1);
+
+    const obj = {
+
+      Ticker: vals[0],
+
+      EPS_TTM: vals[1],
+
+      EPS_Percentile: vals[2],
+
+      EPS_Growth: vals[3],
+
+      Inst_Accumulation: vals[4],
+
+      Alpha_63D: vals[5],
+
+      Beta: vals[6],
+
+      RSI: vals[7],
+
+      SMA200_Dist: vals[8],
+
+      MA_Slope: vals[9],
+
+      Volume_Expansion: vals[10],
+
+      Net_Inst: vals[11],
+
+      RS_vs_SP100: vals[12],
+
+      Return_63D: vals[13],
+
+      RS_Rank: vals[14],
+
+      Drawdown_pct: vals[15],
+
+      Composite_Score: vals[16],
+
+      New_Composite_Score: vals[17],
+
+      Earnings_Date: vals[18],
+
+      Daily_Composite_Score_delta: vals[19]
+    };
+
+    if (obj.Ticker) {
+      rows.push(obj);
+    }
+  });
+
+  return { rows };
+}
+
+// ======================================================
+// BUILD HTML
+// ======================================================
+
+function buildHtml(data) {
+
+  const safe = JSON.stringify(data)
+    .replace(/</g, "\\u003c");
+
+  return `<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Stocks Analytics</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body {
+  margin:0;
+  background:#0f1117;
+  color:#ddd;
+  font-family:sans-serif;
+}
+
+header {
+  padding:16px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tabs {
+  display:flex;
+  gap:12px;
+  padding:12px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tab-btn {
+  background:#1d2330;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.page {
+  display:none;
+  padding:24px;
+}
+
+.page.active {
+  display:block;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(280px,1fr));
+  gap:16px;
+}
+
+.card {
+  background:#1a1d27;
+  border-radius:12px;
+  padding:16px;
+}
+
+.metric {
+  margin-top:8px;
+}
+
+.center-screen {
+  height:80vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:16px;
+}
+
+.hidden {
+  display:none;
+}
+
+canvas {
+  background:#161922;
+  border-radius:12px;
