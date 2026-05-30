@@ -1,0 +1,88 @@
+.
+├── auth
+│   ├── admin.js
+│   ├── authMiddleware.js
+│   └── context.js
+├── check_excel.js
+├── config
+│   └── env.js
+├── data
+│   ├── analytics.html
+│   ├── analytics.html.backup
+│   ├── fundamentals.js
+│   ├── institutions.js
+│   ├── prices.js
+│   ├── report.html
+│   ├── stocks.xlsx
+│   └── tickers.json
+├── debug-exports
+│   └── main-branch
+│       ├── analytics.html.snapshot
+│       ├── auth-usage.txt
+│       ├── html-generators.txt
+│       ├── project-files.txt
+│       ├── report-flow.txt
+│       ├── runtime-data.txt
+│       ├── runtime-servers.txt
+│       └── workbook-flow.txt
+├── factors
+│   ├── fundamentals.js
+│   ├── normalize.js
+│   ├── risk.js
+│   └── technicals.js
+├── firebase
+│   ├── admin.js
+│   ├── auth.js
+│   ├── authGate.js
+│   ├── firebaseConfig.js
+│   └── firestore.js
+├── firebase-admin-search.txt
+├── index.js
+├── isolate.js
+├── lib
+│   └── loadTickerConfig.js
+├── package-lock.json
+├── package.json
+├── part1.js
+├── part2.js
+├── public
+│   └── analytics-client.js
+├── README.md
+├── scoring
+│   └── scoreEngine.js
+├── scripts
+│   ├── cleanWorkbook.js
+│   ├── createWorkbook.js
+│   ├── firestore-inspect.js
+│   └── screenIndex.js
+├── server
+│   ├── auth
+│   │   ├── admin.js
+│   │   └── verifyRequest.js
+│   ├── routes
+│   │   └── reportData.js
+│   └── serveReport.js
+├── sheets
+│   ├── auth.js
+│   ├── readSheet.js
+│   └── writeSheet.js
+├── signalEngine.js
+├── signals
+│   └── signalEngine.js
+├── structure.txt
+├── test_invalid_ticker.js
+├── test_ticker.js
+├── test_workbook_full.js
+├── test_workbook.js
+├── test1.js
+├── test2.js
+├── tools
+│   ├── testFirestore.js
+│   └── testLoader.js
+├── verify_clean.js
+├── visualizer-analytics.js
+├── visualizer-analytics.js.backup
+├── visualizer-analytics.js.ui-backup
+└── visualizer.js
+
+18 directories, 68 files
