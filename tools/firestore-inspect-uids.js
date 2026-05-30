@@ -1,4 +1,4 @@
-import { db } from "../auth/admin.js";
+node tools/firestore-inspect-uids.jsimport { db } from "../auth/admin.js";
 
 async function run() {
   const snap = await db().collection("users").get();

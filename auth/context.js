@@ -1,38 +1,28 @@
-import { auth as adminAuth, db } from "./admin.js";
-import { resolveUser } from "./rbacResolver.js";
+import { auth as adminAuth } from "./admin.js";
+import { resolveUser } from "./resolveUser.js";
 
-/**
- * Resolve Firebase user → Firestore RBAC context
- */
 export async function buildAuthContext(idToken) {
   if (!idToken) {
     throw new Error("Missing Firebase ID token");
   }
 
-  // 1. Verify Firebase Auth token
   const decoded = await adminAuth().verifyIdToken(idToken);
 
   const uid = decoded.uid;
+  const email = decoded.email;
 
-  // 2. Fetch Firestore user profile
-  const snap = await db().collection("users").doc(uid).get();
+  const user = await resolveUser({ uid, email });
 
-  if (!snap.exists) {
+  if (!user) {
     throw new Error("User not found in RBAC system");
   }
 
-  const data = snap.data();
-
-  // 3. Normalize RBAC context
-  const context = {
+  return {
     uid,
-    email: data.email || decoded.email,
-    role: data.role || "user",
-    status: data.status || "pending",
-
-    isAdmin: data.role === "admin",
-    isActive: data.status === "active",
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    isAdmin: user.isAdmin,
+    isActive: user.isActive,
   };
-
-  return context;
 }
