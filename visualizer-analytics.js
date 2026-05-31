@@ -637,10 +637,47 @@ canvas {
 
 </div>
 
-//<script src="/api/analytics-data.js"></script>
+<!-- SENTINEL: analytics data loaded via /api/analytics-data.json fetch -->
 
 <script type="module">
 
+// ======================================================
+// RUNTIME ANALYTICS LOADER
+// ======================================================
+
+async function loadAnalytics() {
+
+  try {
+
+    const res =
+      await fetch(
+        "/api/analytics-data.json"
+      );
+
+    if (!res.ok) {
+
+      throw new Error(
+        res.statusText
+      );
+    }
+
+    const data =
+      await res.json();
+
+    return data;
+
+  } catch (err) {
+
+    console.error(
+      "Failed to load analytics data",
+      err
+    );
+
+    return {
+      rows: []
+    };
+  }
+}
 // ======================================================
 // FIREBASE IMPORTS
 // ======================================================
@@ -684,12 +721,7 @@ const provider =
 // Data is injected securely at runtime
 // from /api/analytics-data.js
 
-const data =
-  window.__ANALYTICS__ || { rows: [] };
-
-const rows = data.rows;
-
-//const rows = data.rows || [];
+let rows = [];
 
 // ======================================================
 // DOM REFERENCES
@@ -877,19 +909,26 @@ onAuthStateChanged(
         return;
       }
 
-      authEl.innerHTML = "";
-
-      appEl.classList.remove(
-        "hidden"
-      );
-
-      renderOverview();
-
-      renderRisk();
-
-      bootAuthenticatedApp();
-
       
+// ==========================================
+// LOAD ANALYTICS FIRST
+// ==========================================
+
+const payload =
+  await loadAnalytics();
+
+rows =
+  payload.rows || [];
+
+console.log("SENTINEL: Rows populated", rows);
+console.log("SENTINEL: Number of tickers =", rows.length);
+
+// ==========================================
+// BOOT UI
+// ==========================================
+
+bootAuthenticatedApp();
+
 toggleLeadersBtn.onclick =
   () => {
 
@@ -1027,9 +1066,7 @@ function renderOverview() {
 function renderSignals() {
 
 
-  const rows =
-    (window.__ANALYTICS__ &&
-     window.__ANALYTICS__.rows) || [];
+ 
 
   if (!Array.isArray(rows)) return;
 
@@ -1995,7 +2032,7 @@ function renderRSIRegimeChart() {
   }
 
 })();
-export { readData };
+
 
 // ----------------- REMOVE THE FOLLOWING -----------------
 // async function readData() { ... second declaration ... }

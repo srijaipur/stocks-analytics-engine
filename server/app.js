@@ -25,6 +25,9 @@ app.use(morgan("dev"));
 // ============================
 // STATIC FILES
 // ============================
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(process.cwd() + "/data/favicon.ico");
+});
 app.use("/data", express.static(path.join(process.cwd(), "data")));
 
 // ============================
