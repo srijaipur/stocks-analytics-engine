@@ -3,20 +3,20 @@ import "dotenv/config";
 
 import { authMiddleware, requireRole } from "../auth/authMiddleware.js";
 
-const app = express();
+const router = express.Router();
 app.use(express.json());
 
 /**
  * HEALTH CHECK (public)
  */
-app.get("/health", (req, res) => {
+router.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
 /**
  * 🔐 PROTECTED: Serve report only to authenticated users
  */
-app.get(
+router.get(
   "/report",
   authMiddleware,
   requireRole("user"),
@@ -32,7 +32,7 @@ app.get(
 /**
  * 🔐 PROTECTED: Admin-only analytics trigger
  */
-app.post(
+router.post(
   "/admin/run-report",
   authMiddleware,
   requireRole("admin"),
@@ -56,6 +56,4 @@ app.post(
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`🔐 Secure server running on port ${PORT}`);
-});
+export default router;

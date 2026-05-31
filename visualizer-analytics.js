@@ -637,7 +637,7 @@ canvas {
 
 </div>
 
-<script src="/api/analytics-data.js"></script>
+//<script src="/api/analytics-data.js"></script>
 
 <script type="module">
 
@@ -1965,28 +1965,6 @@ function renderRSIRegimeChart() {
       // API: analytics runtime data
       // ==========================================
 
-      if (
-        req.url ===
-        "/api/analytics-data.js"
-      ) {
-
-        const payload =
-          `
-window.__ANALYTICS__ = ${JSON.stringify(data)};
-`;
-
-        res.writeHead(
-          200,
-          {
-            "Content-Type":
-              "application/javascript"
-          }
-        );
-
-        res.end(payload);
-
-        return;
-      }
 
       // ==========================================
       // DEFAULT: analytics html
@@ -2017,3 +1995,7 @@ window.__ANALYTICS__ = ${JSON.stringify(data)};
   }
 
 })();
+export { readData };
+
+// ----------------- REMOVE THE FOLLOWING -----------------
+// async function readData() { ... second declaration ... }

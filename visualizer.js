@@ -10,6 +10,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 import { exec } from "child_process";
+import { validateRow } from "./lib/schemaValidator.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
@@ -274,7 +275,7 @@ new Chart(document.getElementById("scatterChart"), {
   data: {
     datasets: [{
       label: "Tickers",
-      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI_14Day, ticker: r.Ticker, score: r.Composite_Score })),
+      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI, ticker: r.Ticker, score: r.Composite_Score })),
       backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
       pointRadius: 6,
     }]
@@ -367,11 +368,31 @@ if (upcoming.length === 0) {
 
 // ── 5. Data Table ─────────────────────────────────────────────────────────────
 const COLS = [
-  "Ticker", "Composite_Score", "Daily_Composite_Score_delta", "Earnings_Date",
-  "EPS_TTM", "EPS_Percentile_In_Universe", "EPS_Fwd_Grwth_Trnd",
-  "Alpha_63D", "Beta", "RSI_14Day", "SMA200_Dist_%",
-  "MA_Slope_50", "Vol Expansion", "Institutional_Accumulation_%",
-  "LastQRtr_InstActivity", "RS_vs_SP100"
+  "Ticker",
+  "Composite_Score",
+  "Daily_Composite_Score_delta",
+  "Earnings_Date",
+
+  // Quality
+  "EPS_TTM",
+  "EPS_Percentile_In_Universe",
+
+  // Momentum (canonical)
+  "RSI",
+  "MA_Slope",
+  "Alpha_63D",
+  "Return_63D",
+
+  // Risk
+  "Beta",
+  "Drawdown_pct",
+
+  // Flow
+  "Inst_Accumulation",
+  "Net_Inst",
+
+  // Market relative
+  "RS_vs_SP100"
 ];
 
 const thead = document.getElementById("tableHead");
@@ -391,6 +412,19 @@ COLS.forEach((col, ci) => {
 thead.appendChild(tr);
 
 let currentRows = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+
+// ─────────────────────────────────────────────
+// STEP 2C — SCHEMA VALIDATION LAYER
+// ─────────────────────────────────────────────
+
+for (let i = 0; i < ROWS.length; i++) {
+  const row = ROWS[i];
+  const errors = validateRow(row);
+
+  if (errors && errors.length > 0) {
+    console.warn("SCHEMA WARNING", row.Ticker, errors);
+  }
+}
 
 function renderTable(data) {
   tbody.innerHTML = "";
@@ -431,6 +465,68 @@ function sortTable(col, thEl) {
     return dir === "desc" ? bv - av : av - bv;
   });
   renderTable(currentRows);
+
+  // ─────────────────────────────────────────────
+// STEP 2C — SCHEMA VALIDATION LAYER
+// ─────────────────────────────────────────────
+
+function validateRow(row) {
+  const errors = [];
+
+  const requiredFields = [
+    "Ticker",
+    "Composite_Score",
+    "RSI",
+    "Alpha_63D",
+    "MA_Slope_50",
+    "Beta"
+  ];
+
+  for (const field of requiredFields) {
+    if (row[field] === undefined || row[field] === null) {
+      errors.push(field + " missing");
+    }
+  }
+
+  return errors;
+}
+
+ROWS.forEach((row) => {
+  const errors = validateRow(row);
+
+  if (errors.length > 0) {
+    console.warn(
+      "[SCHEMA WARNING] " + row.Ticker + ": " + errors.join(", ")
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // STEP 2D.2 — HARD FIELD SANITIZATION LAYER
+  // Prevent undefined drift into charts/rendering
+  // ─────────────────────────────────────────────
+
+  const REQUIRED_FIELDS = [
+    "Ticker",
+    "Composite_Score",
+    "Daily_Composite_Score_delta",
+    "Alpha_63D",
+    "RSI",
+    "MA_Slope",
+  ];
+
+  REQUIRED_FIELDS.forEach((field) => {
+    if (row[field] === undefined || row[field] === null) {
+      console.warn(
+        "[SCHEMA FIX] Missing field:",
+        row.Ticker,
+        field
+      );
+
+      // SAFE DEFAULTS (do NOT break rendering)
+      row[field] = 0;
+    }
+  });
+});
 }
 
 // Filter

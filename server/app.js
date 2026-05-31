@@ -2,34 +2,44 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import { auth } from "../auth/admin.js";
 import { authMiddleware, requireRole } from "../auth/authMiddleware.js";
 
 const app = express();
 
+// ============================
+// CORE MIDDLEWARE
+// ============================
 app.use(express.json());
 app.use(cors());
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // temporarily disabled for analytics UI stability
+  })
+);
 app.use(morgan("dev"));
 
-app.listen(3000);
+// ============================
+// STATIC FILES
+// ============================
+app.use("/data", express.static(path.join(process.cwd(), "data")));
 
-app.use(express.json()); // MUST exist before routes
-/**
- * BACKEND TOKEN GENERATION (for testing only - not for production use)
- */
+// ============================
+// DEV AUTH HELPERS
+// ============================
 app.get("/dev/token/:uid", async (req, res) => {
   try {
     const uid = req.params.uid;
-
     const customToken = await auth().createCustomToken(uid);
-
     res.json({ customToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-/**Dev Login endpoint for token generation */
+
 app.post("/dev/login", async (req, res) => {
   try {
     const { uid } = req.body;
@@ -38,18 +48,16 @@ app.post("/dev/login", async (req, res) => {
       return res.status(400).json({ error: "uid required" });
     }
 
-    // 1. Create custom token (Firebase Admin SDK)
     const customToken = await auth().createCustomToken(uid);
-
     res.json({ customToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * HEALTH CHECK (no auth)
- */
+// ============================
+// HEALTH
+// ============================
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -58,33 +66,101 @@ app.get("/health", (req, res) => {
   });
 });
 
-/**
- * PROTECTED REPORT ENDPOINT
- * Uses existing generated file: data/report.html
- */
+app.get("/api/analytics-data.json", async (req, res) => {
+  try {
+    const visualizerPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../visualizer-analytics.js"
+    );
+
+    const mod = await import(visualizerPath);
+
+    const payload = mod.readData
+      ? await mod.readData()
+      : { rows: [] };
+
+    res.json(payload);
+  } catch (err) {
+    console.error("analytics-json-error:", err);
+    res.status(500).json({ error: "analytics load failed" });
+  }
+});
+
+// ============================
+// REPORT (PROTECTED)
+// ============================
 app.get("/report", authMiddleware, (req, res) => {
   try {
     res.sendFile(process.cwd() + "/data/report.html");
   } catch (err) {
-    console.error("REPORT_ERROR:", err);
     res.status(500).json({ error: "Failed to load report" });
   }
 });
 
-/**
- * FUTURE HOOK: analytics trigger (admin only)
- * (safe placeholder for Step 2+)
- */
-app.post("/admin/run-report", authMiddleware, requireRole("admin"), (req, res) => {
-  res.json({
-    status: "not_implemented_yet",
-    message: "Step 2 will wire analytics pipeline here",
-  });
+// ============================
+// ANALYTICS HTML (PUBLIC UI)
+// ============================
+app.get("/analytics", (req, res) => {
+  try {
+    res.sendFile(process.cwd() + "/data/analytics.html");
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load analytics dashboard" });
+  }
 });
 
-/**
- * START SERVER
- */
+// ============================
+// CANONICAL DATA API (SOURCE OF TRUTH)
+// ============================
+
+// THIS is the ONLY valid runtime data endpoint
+app.get("/api/analytics-data", authMiddleware, async (req, res) => {
+  try {
+    const visualizerPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../visualizer-analytics.js"
+    );
+
+    const module = await import(visualizerPath);
+
+    const payload = module.readData ? await module.readData() : null;
+
+    if (!payload) {
+      return res.status(500).json({
+        error: "Analytics payload missing",
+      });
+    }
+
+    res.json({
+      rows: payload.rows || [],
+      meta: {
+        generatedAt: new Date().toISOString(),
+        source: "visualizer-analytics",
+      },
+    });
+  } catch (err) {
+    console.error("ANALYTICS_API_ERROR:", err);
+    res.status(500).json({ error: "Failed to load analytics data" });
+  }
+});
+
+// ============================
+// ADMIN HOOK
+// ============================
+app.post(
+  "/admin/run-report",
+  authMiddleware,
+  requireRole("admin"),
+  (req, res) => {
+    res.json({
+      status: "not_implemented_yet",
+      message: "Step 2 pipeline hook reserved",
+    });
+  }
+);
+
+// ============================
+// SERVER START
+// ============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {

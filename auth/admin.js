@@ -1,25 +1,16 @@
 import admin from "firebase-admin";
 import { getEnv } from "../config/env.js";
 
-let app;
+const serviceAccountRaw = getEnv("FIREBASE_SERVICE_ACCOUNT_JSON");
+const serviceAccount = JSON.parse(serviceAccountRaw);
 
-export function getAdminApp() {
-  if (app) return app;
-
-  const serviceAccountRaw = getEnv("FIREBASE_SERVICE_ACCOUNT_JSON");
-  const serviceAccount = JSON.parse(serviceAccountRaw);
-
-  app = admin.initializeApp({
+// ✅ CRITICAL FIX: proper singleton guard
+if (!admin.apps.length) {
+  admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
   });
-
-  return app;
 }
 
-export function db() {
-  return getAdminApp().firestore();
-}
-
-export function auth() {
-  return getAdminApp().auth();
-}
+// expose direct stable references
+export const db = () => admin.firestore();
+export const auth = () => admin.auth();
