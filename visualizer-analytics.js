@@ -29,7 +29,7 @@ const SERVE =
 // READ EXCEL
 // ======================================================
 
-async function readData() {
+export async function readData() {
 
   
 
@@ -1227,7 +1227,7 @@ function renderAnalyticsTable(
       rows.filter((r) => {
 
         return (
-          r.Ticker
+          r.Ticker 
             .toLowerCase()
             .includes(term)
         );

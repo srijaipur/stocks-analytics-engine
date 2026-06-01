@@ -78,11 +78,38 @@ app.get("/api/analytics-data.json", async (req, res) => {
 
     const mod = await import(visualizerPath);
 
-    const payload = mod.readData
-      ? await mod.readData()
-      : { rows: [] };
+console.log(
+  "SENTINEL: module exports =",
+  Object.keys(mod)
+);
 
-    res.json(payload);
+console.log(
+  "SENTINEL: readData exists =",
+  typeof mod.readData
+);
+
+let payload;
+
+if (mod.readData) {
+
+  payload = await mod.readData();
+
+  console.log(
+    "SENTINEL: rows returned =",
+    payload?.rows?.length
+  );
+
+} else {
+
+  payload = { rows: [] };
+
+  console.log(
+    "SENTINEL: readData missing"
+  );
+}
+
+res.json(payload);
+
   } catch (err) {
     console.error("analytics-json-error:", err);
     res.status(500).json({ error: "analytics load failed" });
@@ -141,9 +168,19 @@ app.get("/api/analytics-data", authMiddleware, async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("ANALYTICS_API_ERROR:", err);
-    res.status(500).json({ error: "Failed to load analytics data" });
-  }
+
+  console.error("================================");
+  console.error("ANALYTICS_API_ERROR");
+  console.error(err);
+  console.error(err?.message);
+  console.error(err?.stack);
+  console.error("================================");
+
+  res.status(500).json({
+    error: "Failed to load analytics data",
+    message: err?.message
+  });
+}
 });
 
 // ============================
