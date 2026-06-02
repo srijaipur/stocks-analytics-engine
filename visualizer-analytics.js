@@ -645,26 +645,37 @@ canvas {
 // RUNTIME ANALYTICS LOADER
 // ======================================================
 
-async function loadAnalytics() {
+async function loadAnalytics(user) {
 
   try {
 
+    const token =
+      await user.getIdToken();
+
+    console.log(
+      "SENTINEL: Firebase token acquired",
+      token ? "YES" : "NO"
+    );
+
     const res =
       await fetch(
-        "/api/analytics-data.json"
+        "/api/analytics-data.json",
+        {
+          headers: {
+            Authorization:
+              \`Bearer \${token}\`
+          }
+        }
       );
 
     if (!res.ok) {
 
       throw new Error(
-        res.statusText
-      );
+  \`HTTP \${res.status}\`
+);
     }
 
-    const data =
-      await res.json();
-
-    return data;
+    return await res.json();
 
   } catch (err) {
 
@@ -678,6 +689,7 @@ async function loadAnalytics() {
     };
   }
 }
+  
 // ======================================================
 // FIREBASE IMPORTS
 // ======================================================
@@ -877,37 +889,10 @@ onAuthStateChanged(
 
     try {
 
-      const email =
-        user.email;
+      const email = user.email;
 
-      const whitelistRef =
-        doc(
-          db,
-          "whitelist",
-          email
-        );
-
-      const whitelistSnap =
-        await getDoc(
-          whitelistRef
-        );
-
-      if (
-        !whitelistSnap.exists()
-      ) {
-
-      renderAccessDenied(email);
-
-        authEl.innerHTML =
-          '<div class="error-box">' +
-          '<h2>⛔ Access Denied</h2>' +
-          '<div>' +
-          email +
-          '</div>' +
-          '</div>';
-
-        return;
-      }
+      const payload =
+  await loadAnalytics(user);
 
       
 // ==========================================
@@ -915,7 +900,7 @@ onAuthStateChanged(
 // ==========================================
 
 const payload =
-  await loadAnalytics();
+  await loadAnalytics(user);
 
 rows =
   payload.rows || [];

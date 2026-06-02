@@ -28,6 +28,9 @@ app.use(morgan("dev"));
 app.get("/favicon.ico", (req, res) => {
   res.sendFile(process.cwd() + "/data/favicon.ico");
 });
+
+
+
 app.use("/data", express.static(path.join(process.cwd(), "data")));
 
 // ============================
@@ -69,7 +72,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.get("/api/analytics-data.json", async (req, res) => {
+app.get("/api/analytics-data.json", authMiddleware, async (req, res) => {
   try {
     const visualizerPath = path.resolve(
       path.dirname(fileURLToPath(import.meta.url)),

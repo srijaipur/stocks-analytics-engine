@@ -8,6 +8,11 @@ export async function authMiddleware(req, res, next) {
   try {
     const header = req.headers.authorization;
 
+    console.log(
+  "SENTINEL_AUTH_HEADER:",
+  header ? "PRESENT" : "MISSING"
+);
+
     if (!header || !header.startsWith("Bearer ")) {
       return res.status(401).json({
         error: "Missing Authorization Bearer token",
@@ -18,6 +23,11 @@ export async function authMiddleware(req, res, next) {
 
     // 1. Verify Firebase token
     const decoded = await auth().verifyIdToken(idToken);
+
+    console.log(
+  "SENTINEL_UID:",
+  decoded?.uid
+);
 
     const uid = decoded?.uid;
 
@@ -56,6 +66,11 @@ export async function authMiddleware(req, res, next) {
     next();
   } catch (err) {
     console.error("AUTH_MIDDLEWARE_ERROR:", err);
+
+    console.error(
+  "SENTINEL_AUTH_ERROR:",
+  err.message
+);
 
     return res.status(401).json({
       error: "Unauthorized",
