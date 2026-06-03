@@ -895,12 +895,7 @@ onAuthStateChanged(
   await loadAnalytics(user);
 
       
-// ==========================================
-// LOAD ANALYTICS FIRST
-// ==========================================
 
-const payload =
-  await loadAnalytics(user);
 
 rows =
   payload.rows || [];
