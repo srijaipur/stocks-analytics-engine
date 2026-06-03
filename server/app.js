@@ -30,8 +30,23 @@ app.get("/favicon.ico", (req, res) => {
 });
 
 
+/****************Changes related to accomodating /report into security
+ * We need to serve the static files (like CSS, JS) that the report.html depends on.
+ * These files are located in the /data directory, so we set up a static file server for that path.
+ * This allows the report.html to load its resources without running into CORS issues or needing additional authentication.
+ */
+//app.use("/data", express.static(path.join(process.cwd(), "data")));
+app.use(
+  "/data",
+  express.static(path.join(process.cwd(), "data"))
+);
 
-app.use("/data", express.static(path.join(process.cwd(), "data")));
+app.use(
+  "/firebase",
+  express.static(path.join(process.cwd(), "firebase"))
+);
+
+/*********************/
 
 // ============================
 // DEV AUTH HELPERS
