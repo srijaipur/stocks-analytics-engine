@@ -137,7 +137,7 @@ res.json(payload);
 // ============================
 // REPORT (PROTECTED)
 // ============================
-app.get("/report", (req, res) => {
+app.get("/report", authMiddleware, (req, res) => {
   try {
     res.sendFile(process.cwd() + "/data/report.html");
   } catch (err) {

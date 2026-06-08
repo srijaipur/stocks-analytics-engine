@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Stocks Analytics Report — 5/31/2026</title>
+<title>Stocks Analytics Report — 6/8/2026</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; }
+  .hidden { display: none; }
   h1 { padding: 1.5rem 2rem 0.5rem; font-size: 1.4rem; color: #fff; }
   .subtitle { padding: 0 2rem 1.5rem; font-size: 0.85rem; color: #888; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 0 2rem 2rem; }
@@ -91,13 +93,17 @@
 </head>
 <body>
 
+<div id="auth"></div>
+
+<div id="app" class="hidden">
+
 <h1>Stocks Analytics Report</h1>
 
 <p style="opacity:0.6;font-size:0.7rem">
-  Last build (UTC): 2026-05-31T19:57:42.131Z
+  Last build (UTC): 2026-06-08T04:06:38.665Z
 </p>
-<p>BUILD ID: 1780257462131</p>
-<p class="subtitle">Generated 5/31/2026, 3:57:42 PM &nbsp;·&nbsp; 79 tickers</p>
+<p>BUILD ID: 1780891598668</p>
+<p class="subtitle">Generated 6/8/2026, 12:06:38 AM &nbsp;·&nbsp; 79 tickers</p>
 
 <!-- Ticker Card Grid -->
 <div class="section-header">
@@ -108,7 +114,7 @@
     <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
     <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
   </div>
-  <a class="analytics-link" href="analytics.html">
+  <a class="analytics-link" href="./analytics.html">
   Advanced Anlytical Signals →
 </a>
 </div>
@@ -356,6 +362,27 @@ let currentRows = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score
 // STEP 2C — SCHEMA VALIDATION LAYER
 // ─────────────────────────────────────────────
 
+function validateRow(row) {
+  const errors = [];
+
+  const requiredFields = [
+    "Ticker",
+    "Composite_Score",
+    "RSI",
+    "Alpha_63D",
+    "MA_Slope_50",
+    "Beta"
+  ];
+
+  for (const field of requiredFields) {
+    if (row[field] === undefined || row[field] === null) {
+      errors.push(field + " missing");
+    }
+  }
+
+  return errors;
+}
+
 for (let i = 0; i < ROWS.length; i++) {
   const row = ROWS[i];
   const errors = validateRow(row);
@@ -405,68 +432,7 @@ function sortTable(col, thEl) {
   });
   renderTable(currentRows);
 
-  // ─────────────────────────────────────────────
-// STEP 2C — SCHEMA VALIDATION LAYER
-// ─────────────────────────────────────────────
-
-function validateRow(row) {
-  const errors = [];
-
-  const requiredFields = [
-    "Ticker",
-    "Composite_Score",
-    "RSI",
-    "Alpha_63D",
-    "MA_Slope_50",
-    "Beta"
-  ];
-
-  for (const field of requiredFields) {
-    if (row[field] === undefined || row[field] === null) {
-      errors.push(field + " missing");
-    }
-  }
-
-  return errors;
-}
-
-ROWS.forEach((row) => {
-  const errors = validateRow(row);
-
-  if (errors.length > 0) {
-    console.warn(
-      "[SCHEMA WARNING] " + row.Ticker + ": " + errors.join(", ")
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // STEP 2D.2 — HARD FIELD SANITIZATION LAYER
-  // Prevent undefined drift into charts/rendering
-  // ─────────────────────────────────────────────
-
-  const REQUIRED_FIELDS = [
-    "Ticker",
-    "Composite_Score",
-    "Daily_Composite_Score_delta",
-    "Alpha_63D",
-    "RSI",
-    "MA_Slope",
-  ];
-
-  REQUIRED_FIELDS.forEach((field) => {
-    if (row[field] === undefined || row[field] === null) {
-      console.warn(
-        "[SCHEMA FIX] Missing field:",
-        row.Ticker,
-        field
-      );
-
-      // SAFE DEFAULTS (do NOT break rendering)
-      row[field] = 0;
-    }
-  });
-});
-}
+ }
 
 // Filter
 document.getElementById("filterInput").addEventListener("input", (e) => {
@@ -478,5 +444,79 @@ document.getElementById("filterInput").addEventListener("input", (e) => {
 
 renderTable(currentRows);
 </script>
+
+<script type="module">
+
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+const firebaseConfig =
+  {"apiKey":"AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw","authDomain":"stocks-analytics-platform.firebaseapp.com","projectId":"stocks-analytics-platform","storageBucket":"stocks-analytics-platform.firebasestorage.app","messagingSenderId":"563385076829","appId":"1:563385076829:web:dabe2dd4eb5955200b51b4"};
+
+const app =
+  initializeApp(firebaseConfig);
+
+const auth =
+  getAuth(app);
+
+const provider =
+  new GoogleAuthProvider();
+
+const authEl =
+  document.getElementById("auth");
+
+const appEl =
+  document.getElementById("app");
+
+function renderLoginScreen() {
+
+  authEl.innerHTML =
+    '<div style="height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">' +
+    '<h2>🔒 Login Required</h2>' +
+    '<button id="loginBtn" style="background:#2563eb;color:white;border:none;border-radius:8px;padding:12px 18px;cursor:pointer;font-size:16px;">' +
+    'Sign in with Google' +
+    '</button>' +
+    '</div>';
+
+  document
+    .getElementById("loginBtn")
+    .onclick = () => {
+
+      signInWithPopup(
+        auth,
+        provider
+      );
+    };
+}
+
+onAuthStateChanged(
+  auth,
+  async (user) => {
+
+    if (!user) {
+
+      renderLoginScreen();
+
+      return;
+    }
+
+    appEl.classList.remove("hidden");
+
+    authEl.innerHTML = "";
+  }
+);
+
+</script>
+
+</div>
+
 </body>
 </html>
