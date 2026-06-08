@@ -137,7 +137,7 @@ res.json(payload);
 // ============================
 // REPORT (PROTECTED)
 // ============================
-app.get("/report", authMiddleware, (req, res) => {
+app.get("/report", (req, res) => {
   try {
     res.sendFile(process.cwd() + "/data/report.html");
   } catch (err) {
@@ -160,7 +160,7 @@ app.get("/analytics", (req, res) => {
 // CANONICAL DATA API (SOURCE OF TRUTH)
 // ============================
 
-// THIS is the ONLY valid runtime data endpoint
+// THIS is the ONLY valid runtime data endpoint for analytics consumption. It is protected by auth and serves data directly from the visualizer-analytics module.
 app.get("/api/analytics-data", authMiddleware, async (req, res) => {
   try {
     const visualizerPath = path.resolve(
@@ -200,6 +200,53 @@ app.get("/api/analytics-data", authMiddleware, async (req, res) => {
   });
 }
 });
+
+// THIS is the ONLY valid runtime data endpoint for report consumption. It is protected by auth and serves data directly from the visualizer module.
+app.get("/api/report-data", authMiddleware, async (req, res) => {
+  try {
+    const visualizerPath = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "../visualizer.js"
+    );
+
+    const module = await import(visualizerPath);
+
+    const payload = module.readData
+      ? await module.readData()
+      : null;
+
+    if (!payload) {
+      return res.status(500).json({
+        error: "Report payload missing",
+      });
+    }
+
+    res.json({
+      rows: payload.rows || [],
+      headers: payload.headers || [],
+      meta: {
+        generatedAt: new Date().toISOString(),
+        source: "visualizer",
+      },
+    });
+
+  } catch (err) {
+
+    console.error("================================");
+    console.error("REPORT_API_ERROR");
+    console.error(err);
+    console.error(err?.message);
+    console.error(err?.stack);
+    console.error("================================");
+
+    res.status(500).json({
+      error: "Failed to load report data",
+      message: err?.message,
+    });
+  }
+});
+
+
 
 // ============================
 // ADMIN HOOK

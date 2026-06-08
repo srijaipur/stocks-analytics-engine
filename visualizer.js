@@ -13,6 +13,19 @@ import { exec } from "child_process";
 import { validateRow } from "./lib/schemaValidator.js";
 import { firebaseConfig } from "./firebase/firebaseConfig.js";
 
+
+
+
+export async function readData() {
+  return await readScores();
+}
+
+
+
+
+
+
+
 const firebaseConfigSerialized =
   JSON.stringify(firebaseConfig);
 
@@ -285,7 +298,7 @@ new Chart(document.getElementById("scatterChart"), {
   data: {
     datasets: [{
       label: "Tickers",
-      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI, ticker: r.Ticker, score: r.Composite_Score })),
+      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI_14Day, ticker: r.Ticker, score: r.Composite_Score })),
       backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
       pointRadius: 6,
     }]
@@ -309,6 +322,7 @@ new Chart(document.getElementById("scatterChart"), {
     }
   }
 });
+
 
 // ── 3. Scatter — MA Slope vs Composite ───────────────────────────────────────
 new Chart(document.getElementById("slopeChart"), {
@@ -388,7 +402,7 @@ const COLS = [
   "EPS_Percentile_In_Universe",
 
   // Momentum (canonical)
-  "RSI",
+  "RSI_14Day",
   "MA_Slope",
   "Alpha_63D",
   "Return_63D",
@@ -433,7 +447,7 @@ function validateRow(row) {
   const requiredFields = [
     "Ticker",
     "Composite_Score",
-    "RSI",
+    "RSI_14Day",
     "Alpha_63D",
     "MA_Slope_50",
     "Beta"
