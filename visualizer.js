@@ -16,9 +16,18 @@ import { firebaseConfig } from "./firebase/firebaseConfig.js";
 
 
 
+
 export async function readData() {
-  return await readScores();
+
+
+
+  return {
+    rows,
+    headers,
+  };
 }
+
+
 
 
 
@@ -235,8 +244,13 @@ function buildHtml(headers, rows) {
 </div>
 
 <script>
-const HEADERS = ${jsonHeaders};
-const ROWS    = ${jsonData};
+
+const STATE = {
+  headers: [],
+  rows: []
+};
+
+
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 function scoreColor(s) {
@@ -266,7 +280,8 @@ const TIERS = [
 ];
 function getTier(s) { return TIERS.find(t => (s ?? 0) >= t.min) ?? TIERS[TIERS.length - 1]; }
 
-const sortedCards = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+function renderDashboard() {
+const sortedCards = [...STATE.rows].sort((a, b) => b.Composite_Score - a.Composite_Score);
 const cardGrid = document.getElementById("cardGrid");
 
 sortedCards.forEach(r => {
@@ -298,8 +313,13 @@ new Chart(document.getElementById("scatterChart"), {
   data: {
     datasets: [{
       label: "Tickers",
-      data: ROWS.map(r => ({ x: r.Alpha_63D, y: r.RSI_14Day, ticker: r.Ticker, score: r.Composite_Score })),
-      backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
+      data: STATE.rows.map(r => ({
+  x: r.Alpha_63D,
+  y: r.RSI,
+  ticker: r.Ticker,
+  score: r.Composite_Score
+})),
+      backgroundColor: STATE.rows.map(r => scoreColor(r.Composite_Score) + "cc"),
       pointRadius: 6,
     }]
   },
@@ -330,8 +350,12 @@ new Chart(document.getElementById("slopeChart"), {
   data: {
     datasets: [{
       label: "Tickers",
-      data: ROWS.map(r => ({ x: r.MA_Slope_50, y: r.Composite_Score, ticker: r.Ticker })),
-      backgroundColor: ROWS.map(r => scoreColor(r.Composite_Score) + "cc"),
+      data: STATE.rows.map(r => ({
+  x: r.MA_Slope,
+  y: r.Composite_Score,
+  ticker: r.Ticker
+})),
+      backgroundColor: STATE.rows.map(r => scoreColor(r.Composite_Score) + "cc"),
       pointRadius: 6,
     }]
   },
@@ -361,7 +385,7 @@ const now   = new Date();
 now.setHours(0, 0, 0, 0);
 const in7   = new Date(now.getTime() + 7 * 86400000);
 
-const upcoming = ROWS
+const upcoming = STATE.rows
   .filter(r => {
     if (!r.Earnings_Date) return false;
     const d = new Date(r.Earnings_Date);
@@ -435,7 +459,7 @@ COLS.forEach((col, ci) => {
 });
 thead.appendChild(tr);
 
-let currentRows = [...ROWS].sort((a, b) => b.Composite_Score - a.Composite_Score);
+let currentRows = [...STATE.rows].sort((a, b) => b.Composite_Score - a.Composite_Score);
 
 // ─────────────────────────────────────────────
 // STEP 2C — SCHEMA VALIDATION LAYER
@@ -445,13 +469,13 @@ function validateRow(row) {
   const errors = [];
 
   const requiredFields = [
-    "Ticker",
-    "Composite_Score",
-    "RSI_14Day",
-    "Alpha_63D",
-    "MA_Slope_50",
-    "Beta"
-  ];
+  "Ticker",
+  "Composite_Score",
+  "RSI",
+  "Alpha_63D",
+  "MA_Slope",
+  "Beta"
+];
 
   for (const field of requiredFields) {
     if (row[field] === undefined || row[field] === null) {
@@ -462,8 +486,8 @@ function validateRow(row) {
   return errors;
 }
 
-for (let i = 0; i < ROWS.length; i++) {
-  const row = ROWS[i];
+for (let i = 0; i < STATE.rows.length; i++) {
+  const row = STATE.rows[i];
   const errors = validateRow(row);
 
   if (errors && errors.length > 0) {
@@ -516,12 +540,15 @@ function sortTable(col, thEl) {
 // Filter
 document.getElementById("filterInput").addEventListener("input", (e) => {
   const q = e.target.value.trim().toUpperCase();
-  const filtered = q ? ROWS.filter(r => r.Ticker.toUpperCase().includes(q)) : [...ROWS];
+  const filtered = q ? STATE.rows.filter(r => r.Ticker.toUpperCase().includes(q)) : [...STATE.rows];
   currentRows = filtered;
   renderTable(filtered);
 });
 
 renderTable(currentRows);
+
+} // END renderDashboard()
+
 <\/script>
 
 <script type="module">
@@ -576,6 +603,7 @@ function renderLoginScreen() {
     };
 }
 
+
 onAuthStateChanged(
   auth,
   async (user) => {
@@ -590,6 +618,74 @@ onAuthStateChanged(
     appEl.classList.remove("hidden");
 
     authEl.innerHTML = "";
+
+    //renderDashboard();
+
+    const token =
+  await user.getIdToken();
+
+const response =
+  await fetch(
+    "/api/analytics-data",
+    {
+      headers: {
+        Authorization:
+          "Bearer " + token
+      }
+    }
+  );
+
+const payload =
+  await response.json();
+
+console.log(
+  "SECURE_API_ROWS",
+  payload.rows?.length
+);
+
+    try {
+
+      const token = await user.getIdToken();
+
+      const response = await fetch(
+        "/api/analytics-data",
+        {
+          headers: {
+            Authorization: "Bearer " + token
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "API failed: " + response.status
+        );
+      }
+
+      const payload = await response.json();
+
+      if (
+        payload &&
+        Array.isArray(payload.rows)
+      ) {
+        STATE.rows.length = 0;
+        STATE.rows.push(...payload.rows);
+
+        renderDashboard();
+      }
+
+    } catch (err) {
+
+      console.error(
+        "SECURED_REPORT_LOAD_ERROR",
+        err
+      );
+
+      authEl.innerHTML =
+        '<div style="padding:20px;color:#ff8080;">' +
+        'Failed to load secured analytics data.' +
+        '</div>';
+    }
   }
 );
 
