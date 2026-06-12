@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Intrinsic Value Engine</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .card { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    .grid { display: flex; gap: 10px; }
+    .grid .card { flex: 1; }
+    .warning { background: #fff3cd; }
+    .logs { background: #f8f9fa; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<h1>Intrinsic Valuation Engine</h1>
+
+<div class="card">
+  <input id="ticker" placeholder="Enter Ticker (MSFT)" />
+  <button onclick="runAnalysis()">Analyze</button>
+</div>
+
+<div id="summary" class="card"></div>
+
+<div class="grid">
+  <div id="dcf" class="card"></div>
+  <div id="epv" class="card"></div>
+  <div id="relative" class="card"></div>
+</div>
+
+<div id="sentinel" class="card"></div>
+<div id="warnings" class="card warning"></div>
+<div id="logs" class="card logs"></div>
+
+<script type="module" src="./main.js"></script>
+
+</body>
+</html>
