@@ -35,9 +35,16 @@ async function loadAnalyticsData() {
 
     const obj = {};
 
-    row.eachCell((cell, colNumber) => {
-      obj[headers[colNumber]] = cell.value;
-    });
+
+
+  const normalizeKey = (k) => {
+  if (k === "Drawdown_%") return "Drawdown_pct";
+  return k;
+};
+
+row.eachCell((cell, colNumber) => {
+  obj[normalizeKey(headers[colNumber])] = cell.value;
+});
 
     rows.push(obj);
   });
