@@ -1,29 +1,72 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { app } from "./firebaseConfig.js";
+import { adminAuth } from "./admin.js";
+console.log("🔥 AUTHGATE ACTIVE");
+export async function authMiddleware(req, res, next) {
+  try {
+    
+    let token = null;
 
-const auth = getAuth(app);
+const header = req.headers.authorization;
 
-export function attachAuthGate(startApp) {
-  onAuthStateChanged(auth, async (user) => {
+if (header?.startsWith("Bearer ")) {
+  token = header.split("Bearer ")[1];
+}
 
-    if (!user) {
-      document.body.innerHTML = `
-        <div style="background:#0f1117;color:#fff;height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column">
-          <h2>🔒 Access Restricted</h2>
-          <p>Sign in with Google to continue</p>
-          <button id="loginBtn" style="padding:10px 20px">Login</button>
-        </div>
-      `;
+if (!token && req.cookies?.sessionToken) {
+  token = req.cookies.sessionToken;
+}
 
-      document.getElementById("loginBtn").onclick = async () => {
-        const { loginWithGoogle } = await import("./auth.js");
-        await loginWithGoogle();
-        location.reload();
-      };
+if (!token) {
+  return res.status(401).json({
+    error: "Unauthorized"
+  });
+}
 
-      return;
+    const decoded = await adminAuth.verifyIdToken(token);
+    console.log("DECODED TOKEN:", decoded);
+
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email || null,
+      role: decoded.role || "user"
+    };
+
+    next();
+  } catch (err) {
+   console.error("AUTH ERROR (authMiddleware):", err);
+
+return res.status(401).json({
+  error: "Unauthorized",
+  stage: "authMiddleware"
+});
+  }
+}
+
+export function requireRole(role) {
+  return (req, res, next) => {
+    console.log("➡️ requireRole ENTERED");
+    console.log("EXPECTED ROLE:", role);
+    console.log("ACTUAL USER:", req.user);
+
+    if (!req.user) {
+      console.log("❌ requireRole BLOCK: no req.user");
+      return res.status(401).json({
+        error: "Unauthenticated",
+        stage: "requireRole:noUser"
+      });
     }
 
-    startApp(user);
-  });
+    if (req.user.role !== role && req.user.role !== "admin") {
+      console.log("❌ requireRole BLOCK: role mismatch");
+      console.log("EXPECTED:", role);
+      console.log("ACTUAL:", req.user.role);
+
+      return res.status(403).json({
+        error: "Forbidden (RBAC)",
+        stage: "requireRole:roleMismatch"
+      });
+    }
+
+    console.log("✅ requireRole PASSED");
+    next();
+  };
 }

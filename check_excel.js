@@ -1,28 +1,22 @@
-import ExcelJS from "exceljs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+import {
+  getAuth
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const workbook = new ExcelJS.Workbook();
-await workbook.xlsx.readFile(WORKBOOK_PATH);
+import {
+  getFirestore
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const portfolio = workbook.getWorksheet("Portfolio");
+export const firebaseConfig = {
+  apiKey: "****",
+  authDomain: "***",
+  projectId: "***",
+  storageBucket: "****",
+  messagingSenderId: "**",
+  appId: "***"
+};
 
-console.log("📊 All tickers in Portfolio sheet:");
-const tickers = [];
-portfolio.eachRow((row, rowNumber) => {
-  if (rowNumber > 1) {
-    const ticker = row.getCell(1).value;
-    tickers.push(ticker);
-  }
-});
-
-console.log(tickers);
-console.log(`\nTotal: ${tickers.length}`);
-
-const testTickers = tickers.filter(t => t && t.includes("TEST"));
-if (testTickers.length > 0) {
-  console.log(`\n⚠️  Found test tickers: ${testTickers.join(", ")}`);
-}
+export const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);

@@ -1,17 +1,22 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
-import { app } from "./firebaseConfig.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import { app } from "./firebaseConfig.browser.js";
 
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
-export function loginWithGoogle() {
-  return signInWithPopup(auth, provider);
-}
+export async function loginWithGoogle() {
+  const provider = new GoogleAuthProvider();
 
-export function logout() {
-  return signOut(auth);
-}
+  const result = await signInWithPopup(auth, provider);
 
-export function getCurrentUser() {
-  return auth.currentUser;
+  const user = result.user;
+  const token = await user.getIdToken();
+
+  localStorage.setItem("idToken", token);
+
+  return { user, token };
 }
