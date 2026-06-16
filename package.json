@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node index.js && node visualizer.js",
     "analytics": "node visualizer-analytics.js",
+    "report": "node visualizer-report.js",
     "analytics:serve": "node visualizer-analytics.js --serve",
     "screen-rut": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js rut",
     "screen-dji": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js dji",
@@ -20,7 +21,9 @@
     "format:check": "prettier --check .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "visualize": "node --use-system-ca visualizer.js",
-    "visualize:serve": "node --use-system-ca visualizer.js --serve"
+    "visualize:serve": "node --use-system-ca visualizer.js --serve",
+    "visualize-report": "node --use-system-ca visualizer-report.js",
+    "visualize-report:serve": "node --use-system-ca visualizer-report.js --serve"
   },
   "keywords": [],
   "author": "",
