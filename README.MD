@@ -30,6 +30,7 @@ A Node.js quantitative stock analytics engine that fetches multi-source market d
 - Branch: `feature/googleauth-security-hardening-clean` — focuses on authentication hardening, safer workbook creation, and cleanup utilities.
 - Workbook creation is idempotent: `scripts/createWorkbook.js` will add missing sheets and append new tickers without destroying user edits in the workbook.
 - Added `scripts/cleanWorkbook.js` to delete and regenerate `data/stocks.xlsx` from canonical `data/tickers.json` when invalid tickers accumulate.
+- Added `visualizer-report.js` and related npm scripts to generate Firebase auth-protected `data/report.html` output for logged-in users.
 - Server routes for `/report` and `/analytics` are guarded with `authMiddleware` + `requireRole()` to restrict access to authenticated users; admin-only endpoints (e.g., `/admin/run-report`) allow triggering analytics runs.
 
 ## Architecture
@@ -75,6 +76,7 @@ stocks-analytics-engine/
 ├── signalEngine.js           # Signal computation helpers
 ├── visualizer.js             # Reads stocks.xlsx → generates report.html
 ├── visualizer-analytics.js   # Advanced analytics HTML generator
+├── visualizer-report.js      # Auth-protected report generation using Firebase auth
 ├── package.json
 ├── Dockerfile
 ├── eslint.config.js
@@ -244,12 +246,23 @@ Each screen command fetches paginated screener results from Finviz, post-filters
 
 ### Generate the visual report
 
-Reads `ScoresCurrent` from `stocks.xlsx` and writes a self-contained `data/report.html` with a score card grid, scatter charts, upcoming earnings strip, and a full sortable data table:
+Reads `ScoresCurrent` from `stocks.xlsx` and writes a self-contained `data/report.html` with a score card grid, scatter charts, upcoming earnings strip, and a full sortable data table.
+
+Use the original report builder:
 
 ```bash
-npm run visualize             # write data/report.html
+npm run visualize             # write data/report.html using visualizer.js
 npm run visualize:serve       # write + open in browser at http://localhost:3000
 ```
+
+Use the new auth-protected report builder:
+
+```bash
+npm run visualize-report      # write data/report.html using visualizer-report.js
+npm run visualize-report:serve  # write + open in browser at http://localhost:3000
+```
+
+This build path generates a report page that includes Firebase client-side auth and Firestore whitelist checks, so it is intended for authenticated users.
 
 > Run `npm start` first — the report reads from the Excel workbook.
 
