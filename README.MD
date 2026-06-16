@@ -31,6 +31,7 @@ A Node.js quantitative stock analytics engine that fetches multi-source market d
 - Workbook creation is idempotent: `scripts/createWorkbook.js` will add missing sheets and append new tickers without destroying user edits in the workbook.
 - Added `scripts/cleanWorkbook.js` to delete and regenerate `data/stocks.xlsx` from canonical `data/tickers.json` when invalid tickers accumulate.
 - Added `visualizer-report.js` and related npm scripts to generate Firebase auth-protected `data/report.html` output for logged-in users.
+- Added a nightly GitHub Actions workflow at `.github/workflows/report.yml` to build the workbook, run the analytics pipeline, generate both report and analytics pages, validate outputs, and deploy static assets to GitHub Pages.
 - Server routes for `/report` and `/analytics` are guarded with `authMiddleware` + `requireRole()` to restrict access to authenticated users; admin-only endpoints (e.g., `/admin/run-report`) allow triggering analytics runs.
 
 ## Architecture
@@ -304,14 +305,22 @@ npm run visualize
 
 This generates `data/report.html` with the new ticker included in the score cards, charts, and data table.
 
-5. (Optional) Publish the report to GitHub Pages:
+5. Publish the report and analytics pages to GitHub Pages:
 
-1. Commit the updated `data/report.html` to your repository.
-1. Push to the `main` branch.
-1. The report will automatically update at `https://srijaipur.github.io/stocks-analytics-engine/index.html` (assuming GitHub Actions or manual deployment is configured).
+This repository includes a scheduled GitHub Actions workflow in `.github/workflows/report.yml`. When merged into `main`, the workflow will:
+
+- regenerate `data/stocks.xlsx`
+- run the analytics pipeline via `index.js`
+- generate `data/report.html` with Firebase auth protection
+- generate `data/analytics.html`
+- validate both generated artifacts
+- deploy the `data/` directory to GitHub Pages as the published site root
+
+The latest nightly site will be available at `https://srijaipur.github.io/stocks-analytics-engine/index.html` for the report, and `https://srijaipur.github.io/stocks-analytics-engine/analytics.html` for analytics.
 
 > **Notes:**
 >
+> - The GitHub Actions workflow validates that `data/index.html` has a non-zero ticker count, that `data/analytics.html` contains serialized analytics payload, and that `data/report.html` retains auth protections without leaking admin secrets.
 > - Invalid or delisted tickers will cause errors during data fetching. Verify the ticker exists before adding.
 > - The report only includes tickers that have successfully been processed and scored.
 > - For bulk additions, add multiple tickers at once and follow the same steps.

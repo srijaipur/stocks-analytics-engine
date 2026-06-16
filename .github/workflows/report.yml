@@ -1,8 +1,8 @@
-name: Publish Analytics Report
-"on":
+name: Nightly Report + Analytics Publish
+on:
   schedule:
-    - cron: 0 21 * * 1-5
-  workflow_dispatch: null
+    - cron: '0 3 * * 1-5'
+  workflow_dispatch: {}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: '24'
       - run: npm ci --omit=dev
       - name: Seed workbook
         run: node scripts/createWorkbook.js
@@ -24,13 +24,13 @@ jobs:
           fi
       - name: Run analytics pipeline
         run: node --experimental-specifier-resolution=node index.js
-      - name: Generate HTML report
-        run: node visualizer.js
+      - name: Generate auth-protected report
+        run: node visualizer-report.js
       - name: Generate analytics report
         run: node visualizer-analytics.js
       - name: Copy report to root index
         run: cp data/report.html data/index.html
-      - name: Validate generated report
+      - name: Validate generated artifacts
         run: |
           if [ ! -f data/index.html ]; then
             echo "ERROR: data/index.html does not exist"
@@ -38,7 +38,22 @@ jobs:
           fi
           if ! grep -qE '[1-9][0-9]* tickers' data/index.html; then
             echo "ERROR: data/index.html is missing a valid ticker count or contains 0 tickers"
-            grep -nE 'Generated .*tickers' data/index.html || true
+            exit 1
+          fi
+          if [ ! -f data/analytics.html ]; then
+            echo "ERROR: data/analytics.html does not exist"
+            exit 1
+          fi
+          if ! grep -q 'window.__ANALYTICS__' data/analytics.html; then
+            echo "ERROR: data/analytics.html does not contain analytics payload"
+            exit 1
+          fi
+          if ! grep -q 'signInWithPopup' data/report.html; then
+            echo "ERROR: data/report.html does not appear to be auth-protected"
+            exit 1
+          fi
+          if grep -q -E 'firebase-admin|serviceAccount|FIREBASE_SERVICE_ACCOUNT_JSON|private_key' data/report.html; then
+            echo "ERROR: data/report.html contains sensitive admin tokens or credentials"
             exit 1
           fi
       - name: Deploy to GitHub Pages
