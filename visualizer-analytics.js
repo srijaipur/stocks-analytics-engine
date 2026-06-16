@@ -231,6 +231,43 @@ canvas {
   border-left:4px solid #dc2626;
 }
 
+
+  .report-link {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #ffffffaa; 
+  background: #0d1a2e;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+}
+
+.report-link:hover {
+  background: #13233d;
+  border-color: #ffffff;
+  /* Glow intensifies on hover for an authentic neon effect */
+  box-shadow: 
+    0 0 6px #ffffff, 
+    0 0 16px #ffffff, 
+    0 0 26px #64b5f6, 
+    0 0 40px #2196f3;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  padding: 0 2rem 2rem;
+}
+
 </style>
 
 </head>
@@ -245,6 +282,11 @@ canvas {
   <h1>
     📊 Stocks Analytics Dashboard
   </h1>
+  
+   <a class="report-link" href="report-loader.html">
+  ← General Stock Universe Report 
+</a>
+
 </header>
 
 <div class="tabs">
@@ -279,6 +321,7 @@ canvas {
 
 </div>
 
+
 <div
   id="overview"
   class="page active"
@@ -287,6 +330,8 @@ canvas {
   <!-- ===================================== -->
   <!-- LEADERSHIP STRIP -->
   <!-- ===================================== -->
+
+ 
 
   <div style=" display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:16px; flex-wrap:wrap; " > <h2 style=" margin:0; font-size:20px; " > Leadership </h2> <button id="toggleLeadersBtn" class="tab-btn" > Show All Leaders </button> </div> <div class="grid" id="overviewGrid" ></div>
 

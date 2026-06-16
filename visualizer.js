@@ -117,7 +117,13 @@ function buildHtml(headers, rows) {
   border-radius: 999px; border: 1px solid #2196f355; background:
    #0d1a2e; color: #90caf9; text-decoration: none; font-weight: 
    600; transition: all 0.15s ease;
-   }
+   /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+    }
   .analytics-link:hover {  background: #13233d; border-color: #64b5f6;}
   .card-grid { display: grid; grid-template-columns: 
   repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; 
@@ -168,7 +174,7 @@ function buildHtml(headers, rows) {
     <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
     <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
   </div>
-  <a class="analytics-link" href="analytics.html">
+  <a class="analytics-link" href="analytics-loader.html">
   Advanced Anlytical Signals →
 </a>
 </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Stocks Analytics Report — 6/14/2026</title>
+<title>Stocks Analytics Report — 6/15/2026</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,7 +57,13 @@
   border-radius: 999px; border: 1px solid #2196f355; background:
    #0d1a2e; color: #90caf9; text-decoration: none; font-weight: 
    600; transition: all 0.15s ease;
-   }
+   /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+    }
   .analytics-link:hover {  background: #13233d; border-color: #64b5f6;}
   .card-grid { display: grid; grid-template-columns: 
   repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; 
@@ -94,10 +100,10 @@
 <h1>Stocks Analytics Report</h1>
 
 <p style="opacity:0.6;font-size:0.7rem">
-  Last build (UTC): 2026-06-14T16:54:38.099Z
+  Last build (UTC): 2026-06-16T03:46:23.442Z
 </p>
-<p>BUILD ID: 1781456078099</p>
-<p class="subtitle">Generated 6/14/2026, 12:54:38 PM &nbsp;·&nbsp; 79 tickers</p>
+<p>BUILD ID: 1781581583442</p>
+<p class="subtitle">Generated 6/15/2026, 11:46:23 PM &nbsp;·&nbsp; 79 tickers</p>
 
 <!-- Ticker Card Grid -->
 <div class="section-header">
@@ -108,7 +114,7 @@
     <span class="legend-pill" style="background:#2a1a0a;border-color:#ff9800">30 &ndash; 50 &nbsp;Weak</span>
     <span class="legend-pill" style="background:#2a0d0d;border-color:#f44336">&lt; 30 &nbsp;Reduce</span>
   </div>
-  <a class="analytics-link" href="analytics.html">
+  <a class="analytics-link" href="analytics-loader.html">
   Advanced Anlytical Signals →
 </a>
 </div>
