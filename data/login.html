@@ -1,86 +1,68 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Login</title>
-<style>
-body{
-  background:#0f1117;
-  color:#fff;
-  font-family:Arial,sans-serif;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  flex-direction:column;
-}
-button{
-  padding:12px 20px;
-  cursor:pointer;
-  font-size:16px;
-}
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+    <style>
+      body {
+        background: #0f1117;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+      }
+      button {
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🔒 Login Required</h2>
 
-<h2>🔒 Login Required</h2>
+    <button id="loginBtn">Sign in with Google</button>
 
-<button id="loginBtn">
-  Sign in with Google
-</button>
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-<script type="module">
+      import {
+        getAuth,
+        GoogleAuthProvider,
+        signInWithPopup,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      const firebaseConfig = {
+        apiKey: "AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw",
+        authDomain: "stocks-analytics-platform.firebaseapp.com",
+        projectId: "stocks-analytics-platform",
+        appId: "1:563385076829:web:dabe2dd4eb5955200b51b4",
+      };
 
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      const app = initializeApp(firebaseConfig);
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw",
-  authDomain: "stocks-analytics-platform.firebaseapp.com",
-  projectId: "stocks-analytics-platform",
-  appId: "1:563385076829:web:dabe2dd4eb5955200b51b4"
-};
+      const auth = getAuth(app);
 
-const app = initializeApp(firebaseConfig);
+      document.getElementById("loginBtn").onclick = async () => {
+        try {
+          const provider = new GoogleAuthProvider();
 
-const auth = getAuth(app);
+          const result = await signInWithPopup(auth, provider);
 
-document.getElementById("loginBtn").onclick = async () => {
+          const token = await result.user.getIdToken();
 
-  try {
+          localStorage.setItem("idToken", token);
 
-    const provider = new GoogleAuthProvider();
+          window.location.href = "/report-loader.html";
+        } catch (err) {
+          console.error(err);
 
-    const result = await signInWithPopup(
-      auth,
-      provider
-    );
-
-    const token = await result.user.getIdToken();
-
-    localStorage.setItem(
-      "idToken",
-      token
-    );
-
-    window.location.href = "/report-loader.html";
-
-  } catch (err) {
-
-    console.error(err);
-
-    alert("Login failed");
-  }
-};
-
-</script>
-
-
-</body>
+          alert("Login failed");
+        }
+      };
+    </script>
+  </body>
 </html>

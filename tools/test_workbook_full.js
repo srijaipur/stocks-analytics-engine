@@ -16,8 +16,10 @@ portfolio.eachRow((row, rowNumber) => {
   rows.push({ num: rowNumber, val: row.getCell(1).value });
 });
 
-rows.filter((r, i) => i >= rows.length - 10).forEach(r => {
-  console.log(`  Row ${r.num}: ${r.val}`);
-});
+rows
+  .filter((r, i) => i >= rows.length - 10)
+  .forEach((r) => {
+    console.log(`  Row ${r.num}: ${r.val}`);
+  });
 
 console.log(`\nTotal rows in Portfolio: ${rows.length}`);

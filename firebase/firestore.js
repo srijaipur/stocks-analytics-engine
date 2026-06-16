@@ -1,10 +1,6 @@
 import { initializeApp } from "firebase/app";
 
-import {
-  getFirestore,
-  doc,
-  getDoc
-} from "firebase/firestore";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 
 import { firebaseConfig } from "./firebaseConfig.js";
 
@@ -21,12 +17,8 @@ export const db = getFirestore(app);
 // =====================================================
 
 function sanitizeTickerArray(value, fieldName) {
-
   if (!Array.isArray(value)) {
-
-    throw new Error(
-      `config/tickers.${fieldName} must be an array`
-    );
+    throw new Error(`config/tickers.${fieldName} must be an array`);
   }
 
   return value
@@ -40,44 +32,27 @@ function sanitizeTickerArray(value, fieldName) {
 // =====================================================
 
 export async function getTickerConfig() {
-
   const ref = doc(db, "config", "tickers");
 
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {
-
-    throw new Error(
-      "Missing Firestore document: config/tickers"
-    );
+    throw new Error("Missing Firestore document: config/tickers");
   }
 
   const data = snap.data();
 
   if (!data || typeof data !== "object") {
-
-    throw new Error(
-      "Invalid Firestore config/tickers payload"
-    );
+    throw new Error("Invalid Firestore config/tickers payload");
   }
 
   return {
+    portfolio: sanitizeTickerArray(data.portfolio || [], "portfolio"),
 
-    portfolio: sanitizeTickerArray(
-      data.portfolio || [],
-      "portfolio"
-    ),
+    watchlist: sanitizeTickerArray(data.watchlist || [], "watchlist"),
 
-    watchlist: sanitizeTickerArray(
-      data.watchlist || [],
-      "watchlist"
-    ),
+    sp100: sanitizeTickerArray(data.sp100 || [], "sp100"),
 
-    sp100: sanitizeTickerArray(
-      data.sp100 || [],
-      "sp100"
-    ),
-
-    updatedAt: data.updatedAt || null
+    updatedAt: data.updatedAt || null,
   };
 }

@@ -1,14 +1,10 @@
-import { initializeApp, cert, getApps } 
-from "firebase-admin/app";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
 
-import { getAuth } 
-from "firebase-admin/auth";
+import { getAuth } from "firebase-admin/auth";
 
 import "dotenv/config";
 
-const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-);
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 const app =
   getApps().length === 0

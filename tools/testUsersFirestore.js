@@ -8,13 +8,13 @@ async function getUsersByRole(roleFilter = null) {
 
   const users = [];
 
-  snapshot.forEach(doc => {
+  snapshot.forEach((doc) => {
     const data = doc.data();
 
     if (!roleFilter || data.role === roleFilter) {
       users.push({
         id: doc.id,
-        ...data
+        ...data,
       });
     }
   });
@@ -30,7 +30,6 @@ try {
   console.log("Firestore users fetch successful");
   console.log("Filter role:", role || "ALL");
   console.log(JSON.stringify(users, null, 2));
-
 } catch (err) {
   console.error("Firestore user fetch failed");
   console.error(err);

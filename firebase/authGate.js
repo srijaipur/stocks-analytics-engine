@@ -2,24 +2,23 @@ import { adminAuth } from "./admin.js";
 console.log("🔥 AUTHGATE ACTIVE");
 export async function authMiddleware(req, res, next) {
   try {
-    
     let token = null;
 
-const header = req.headers.authorization;
+    const header = req.headers.authorization;
 
-if (header?.startsWith("Bearer ")) {
-  token = header.split("Bearer ")[1];
-}
+    if (header?.startsWith("Bearer ")) {
+      token = header.split("Bearer ")[1];
+    }
 
-if (!token && req.cookies?.sessionToken) {
-  token = req.cookies.sessionToken;
-}
+    if (!token && req.cookies?.sessionToken) {
+      token = req.cookies.sessionToken;
+    }
 
-if (!token) {
-  return res.status(401).json({
-    error: "Unauthorized"
-  });
-}
+    if (!token) {
+      return res.status(401).json({
+        error: "Unauthorized",
+      });
+    }
 
     const decoded = await adminAuth.verifyIdToken(token);
     console.log("DECODED TOKEN:", decoded);
@@ -27,17 +26,17 @@ if (!token) {
     req.user = {
       uid: decoded.uid,
       email: decoded.email || null,
-      role: decoded.role || "user"
+      role: decoded.role || "user",
     };
 
     next();
   } catch (err) {
-   console.error("AUTH ERROR (authMiddleware):", err);
+    console.error("AUTH ERROR (authMiddleware):", err);
 
-return res.status(401).json({
-  error: "Unauthorized",
-  stage: "authMiddleware"
-});
+    return res.status(401).json({
+      error: "Unauthorized",
+      stage: "authMiddleware",
+    });
   }
 }
 
@@ -51,7 +50,7 @@ export function requireRole(role) {
       console.log("❌ requireRole BLOCK: no req.user");
       return res.status(401).json({
         error: "Unauthenticated",
-        stage: "requireRole:noUser"
+        stage: "requireRole:noUser",
       });
     }
 
@@ -62,7 +61,7 @@ export function requireRole(role) {
 
       return res.status(403).json({
         error: "Forbidden (RBAC)",
-        stage: "requireRole:roleMismatch"
+        stage: "requireRole:roleMismatch",
       });
     }
 

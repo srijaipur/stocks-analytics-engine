@@ -14,7 +14,6 @@ async function run() {
     console.log("\n=== CUSTOM TOKEN GENERATED ===\n");
     console.log(customToken);
     console.log("\n=============================\n");
-
   } catch (err) {
     console.error("Token generation failed:", err);
   }

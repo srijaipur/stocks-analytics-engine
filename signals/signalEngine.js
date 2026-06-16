@@ -65,7 +65,5 @@ export function detectSignals(rows) {
     }
   });
 
-  return signals
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 50);
+  return signals.sort((a, b) => b.score - a.score).slice(0, 50);
 }

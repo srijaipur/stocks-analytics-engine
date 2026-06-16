@@ -13,7 +13,7 @@ import {
   getBeta,
   getRsi14,
   getSma200Dist,
-  getEarningsDate
+  getEarningsDate,
 } from "./factors/fundamentals.js";
 
 import {
@@ -21,7 +21,7 @@ import {
   relativeStrength,
   maSlope,
   volumeExpansion,
-  getReturn
+  getReturn,
 } from "./factors/technicals.js";
 
 import { percentileRank } from "./factors/normalize.js";
@@ -90,18 +90,16 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
   // =========================
   // NORMALIZATION ARRAYS
   // =========================
-  const allLevels = data.map(d => fundamentalLevel(d.fundamentals));
-  const allTrends = data.map(d => fundamentalTrend(d.fundamentals));
-  const allSlopes = data.map(d => maSlope(d.prices, 50));
-  const allRsi = data.map(d => getRsi14(d.fundamentals));
-  const allSma200 = data.map(d => getSma200Dist(d.fundamentals));
+  const allLevels = data.map((d) => fundamentalLevel(d.fundamentals));
+  const allTrends = data.map((d) => fundamentalTrend(d.fundamentals));
+  const allSlopes = data.map((d) => maSlope(d.prices, 50));
+  const allRsi = data.map((d) => getRsi14(d.fundamentals));
+  const allSma200 = data.map((d) => getSma200Dist(d.fundamentals));
 
-  const allReturn63 = data.map(d => getReturn(d.prices, 63));
-  const allRelativeStrength = data.map(d =>
-    relativeStrength(d.prices, sp100Prices)
-  );
+  const allReturn63 = data.map((d) => getReturn(d.prices, 63));
+  const allRelativeStrength = data.map((d) => relativeStrength(d.prices, sp100Prices));
 
-  const allDrawdown = data.map(d => {
+  const allDrawdown = data.map((d) => {
     let peak = d.prices[0]?.close || 1;
     let maxDD = 0;
 
@@ -166,10 +164,10 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
     const newCompositeScore =
       0.25 * trendRank +
       0.25 * epsPercentile +
-      0.20 * return63Rank +
-      0.10 * rsRank +
-      0.10 * maSlopeRank -
-      0.10 * drawdownRank;
+      0.2 * return63Rank +
+      0.1 * rsRank +
+      0.1 * maSlopeRank -
+      0.1 * drawdownRank;
 
     const earningsDate = getEarningsDate(fundamentals);
 
@@ -197,20 +195,18 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
   });
 
   console.log(
-    rows.slice(0, 5).map(r => ({
+    rows.slice(0, 5).map((r) => ({
       ticker: r[0],
       old: r[16],
       new: r[17],
     }))
   );
 
-  
   const signals = detectSignals(rows);
 
   console.log("Signals Sample:", signals.slice(0, 5));
 
   await writeScores(rows, signals);
-
 
   console.log(`✅ Done — ${rows.length} tickers`);
 })();

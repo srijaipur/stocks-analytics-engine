@@ -47,11 +47,11 @@ export async function authMiddleware(req, res, next) {
     }*/
 
     req.user = {
-  uid: decoded.uid,
-  email: decoded.email,
-  role: decoded.role || "user",
-  keyType: "firebase",
-};
+      uid: decoded.uid,
+      email: decoded.email,
+      role: decoded.role || "user",
+      keyType: "firebase",
+    };
 
     // 4. Attach canonical user context
     req.user = {

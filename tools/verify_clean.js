@@ -17,7 +17,7 @@ portfolio.eachRow((row, rowNumber) => {
   }
 });
 
-const testTickers = tickers.filter(t => t && (t.includes("TEST") || t.includes("NEW")));
+const testTickers = tickers.filter((t) => t && (t.includes("TEST") || t.includes("NEW")));
 
 console.log(`✅ Total tickers in Portfolio: ${tickers.length}`);
 if (testTickers.length === 0) {

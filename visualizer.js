@@ -471,9 +471,12 @@ if (SERVE) {
     const url = "http://localhost:3000";
     console.log(`🌐 Serving at ${url}`);
     // Open in default browser (cross-platform)
-    const cmd = process.platform === "win32" ? `start ${url}`
-              : process.platform === "darwin" ? `open ${url}`
-              : `xdg-open ${url}`;
+    const cmd =
+      process.platform === "win32"
+        ? `start ${url}`
+        : process.platform === "darwin"
+          ? `open ${url}`
+          : `xdg-open ${url}`;
     exec(cmd);
   });
 }

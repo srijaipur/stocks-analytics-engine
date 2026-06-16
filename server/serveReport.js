@@ -3,10 +3,7 @@ import express from "express";
 import "dotenv/config";
 import fs from "fs";
 import ExcelJS from "exceljs";
-import {
-  authMiddleware,
-  requireRole
-} from "../firebase/authGate.js";
+import { authMiddleware, requireRole } from "../firebase/authGate.js";
 
 console.log("MODULE:", import.meta.url);
 console.log("PID:", process.pid);
@@ -16,9 +13,7 @@ console.log("🚀 LOADED SERVER FILE: serveReport.js");
 async function loadAnalyticsData() {
   const workbook = new ExcelJS.Workbook();
 
-  await workbook.xlsx.readFile(
-    process.cwd() + "/data/stocks.xlsx"
-  );
+  await workbook.xlsx.readFile(process.cwd() + "/data/stocks.xlsx");
 
   const sheet = workbook.getWorksheet("ScoresCurrent");
 
@@ -35,24 +30,20 @@ async function loadAnalyticsData() {
 
     const obj = {};
 
+    const normalizeKey = (k) => {
+      if (k === "Drawdown_%") return "Drawdown_pct";
+      return k;
+    };
 
-
-  const normalizeKey = (k) => {
-  if (k === "Drawdown_%") return "Drawdown_pct";
-  return k;
-};
-
-row.eachCell((cell, colNumber) => {
-  obj[normalizeKey(headers[colNumber])] = cell.value;
-});
+    row.eachCell((cell, colNumber) => {
+      obj[normalizeKey(headers[colNumber])] = cell.value;
+    });
 
     rows.push(obj);
   });
 
   return { rows };
 }
-
-
 
 const app = express();
 globalThis.__APP__ = app;
@@ -86,63 +77,41 @@ app.get("/login.html", (req, res) => {
   res.sendFile(process.cwd() + "/data/login.html");
 });
 
-
 app.post("/sessionLogin", (req, res) => {
   return res.status(200).json({
     status: "disabled",
-    message: "Using Authorization header auth instead"
+    message: "Using Authorization header auth instead",
   });
 });
-
 
 app.get("/api/analytics-data.js", async (req, res) => {
   try {
     const data = await loadAnalyticsData(); // MUST exist or be implemented
 
     const safe = {
-      rows: Array.isArray(data?.rows)
-        ? data.rows
-        : []
+      rows: Array.isArray(data?.rows) ? data.rows : [],
     };
 
-    res.setHeader(
-      "Content-Type",
-      "application/javascript"
-    );
+    res.setHeader("Content-Type", "application/javascript");
 
-    res.send(
-      `window.__ANALYTICS__ = ${JSON.stringify(safe)};`
-    );
-
+    res.send(`window.__ANALYTICS__ = ${JSON.stringify(safe)};`);
   } catch (e) {
-    res.setHeader(
-      "Content-Type",
-      "application/javascript"
-    );
+    res.setHeader("Content-Type", "application/javascript");
 
-    res.send(
-      `window.__ANALYTICS__ = { rows: [] };`
-    );
+    res.send(`window.__ANALYTICS__ = { rows: [] };`);
   }
 });
-
-
 
 /**
  * 🔐 PROTECTED: Serve report only to authenticated users
  */
-app.get(
-  "/report",
-  authMiddleware,
-  requireRole("user"),
-  async (req, res) => {
-    try {
-      res.sendFile(process.cwd() + "/data/report.html");
-    } catch (err) {
-      res.status(500).json({ error: "Failed to load report" });
-    }
+app.get("/report", authMiddleware, requireRole("user"), async (req, res) => {
+  try {
+    res.sendFile(process.cwd() + "/data/report.html");
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load report" });
   }
-);
+});
 
 /*app.get(
   "/analytics",
@@ -166,63 +135,46 @@ console.log("USER:", req.user);
     }
   }
 );*/
-app.get(
-  "/analytics",
-  authMiddleware,
-  requireRole("user"),
-  async (req, res) => {
-    console.log("AUTH HEADER:", req.headers.authorization);
-    console.log("ROUTE HIT /analytics");
-    console.log("USER:", req.user);
+app.get("/analytics", authMiddleware, requireRole("user"), async (req, res) => {
+  console.log("AUTH HEADER:", req.headers.authorization);
+  console.log("ROUTE HIT /analytics");
+  console.log("USER:", req.user);
 
-    try {
-      res.sendFile(process.cwd() + "/data/analytics.html");
-    } catch (err) {
-      res.status(500).json({ error: "Failed to load analytics" });
-    }
+  try {
+    res.sendFile(process.cwd() + "/data/analytics.html");
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load analytics" });
   }
-);
+});
 app.get("/report-loader.html", (req, res) => {
-  res.sendFile(
-    process.cwd() + "/data/report-loader.html"
-  );
+  res.sendFile(process.cwd() + "/data/report-loader.html");
 });
 
 app.get("/analytics-loader.html", (req, res) => {
-  res.sendFile(
-    process.cwd() + "/data/analytics-loader.html"
-  );
+  res.sendFile(process.cwd() + "/data/analytics-loader.html");
 });
 
-
-
 console.log("STEP C: routes defined up to loader endpoints");
-
 
 /**
  * 🔐 PROTECTED: Admin-only analytics trigger
  */
-app.post(
-  "/admin/run-report",
-  authMiddleware,
-  requireRole("admin"),
-  async (req, res) => {
-    try {
-      const { exec } = await import("child_process");
+app.post("/admin/run-report", authMiddleware, requireRole("admin"), async (req, res) => {
+  try {
+    const { exec } = await import("child_process");
 
-      exec("node index.js", (err) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ error: "Report generation failed" });
-        }
+    exec("node index.js", (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Report generation failed" });
+      }
 
-        res.json({ status: "report triggered" });
-      });
-    } catch (err) {
-      res.status(500).json({ error: "server error" });
-    }
+      res.json({ status: "report triggered" });
+    });
+  } catch (err) {
+    res.status(500).json({ error: "server error" });
   }
-);
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -230,12 +182,11 @@ console.log("🧭 REGISTERED ROUTES:");
 
 console.log("🧭 REGISTERED ROUTES (SAFE):");
 
-const routes =
-  app._router?.stack || [];
+const routes = app._router?.stack || [];
 
 const formatted = routes
-  .filter(layer => layer.route)
-  .map(layer => {
+  .filter((layer) => layer.route)
+  .map((layer) => {
     const method = Object.keys(layer.route.methods)[0].toUpperCase();
     return `${method} ${layer.route.path}`;
   });
@@ -251,16 +202,13 @@ setTimeout(() => {
     console.log(
       "🧭 FINAL ROUTES:",
       app._router?.stack
-        ?.filter(r => r.route)
-        ?.map(r =>
-          Object.keys(r.route.methods)[0] + " " + r.route.path
-        )
+        ?.filter((r) => r.route)
+        ?.map((r) => Object.keys(r.route.methods)[0] + " " + r.route.path)
     );
   } catch (e) {
     console.log("ROUTE DEBUG FAILED:", e.message);
   }
 }, 1000);
-
 
 app.listen(PORT, () => {
   console.log(`🔐 Secure server running on port ${PORT}`);

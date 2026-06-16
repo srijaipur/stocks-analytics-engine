@@ -143,14 +143,14 @@ stocks-analytics-engine/
 
 Each signal is independently percentile-ranked across the full ticker universe (0–100), then combined as a weighted sum:
 
-| Factor                 | Signal                                    | Weight |
-| ---------------------- | ----------------------------------------- | ------ |
-| **Trend (Forward Growth)** | EPS growth/forward trend from Finviz | 25%    |
-| **EPS Level**          | EPS TTM from Finviz                       | 25%    |
-| **Momentum (63D Return)** | 63-day price return                    | 20%    |
-| **Relative Strength**  | 63-day return vs. `^OEX` benchmark        | 10%    |
-| **MA Slope (50-day)**  | 5-day slope of the 50-day moving average  | 10%    |
-| **Risk (Drawdown)**    | Maximum peak-to-trough drawdown (subtracted) | -10%   |
+| Factor                     | Signal                                       | Weight |
+| -------------------------- | -------------------------------------------- | ------ |
+| **Trend (Forward Growth)** | EPS growth/forward trend from Finviz         | 25%    |
+| **EPS Level**              | EPS TTM from Finviz                          | 25%    |
+| **Momentum (63D Return)**  | 63-day price return                          | 20%    |
+| **Relative Strength**      | 63-day return vs. `^OEX` benchmark           | 10%    |
+| **MA Slope (50-day)**      | 5-day slope of the 50-day moving average     | 10%    |
+| **Risk (Drawdown)**        | Maximum peak-to-trough drawdown (subtracted) | -10%   |
 
 **Additional signals** (computed but not in composite): Jensen's Alpha (63d), Volume Expansion (5-day vs. 20-day average), Institutional Accumulation (% from Finviz + NASDAQ 13F counts), Next Earnings Date.
 
@@ -165,8 +165,6 @@ Each signal is independently percentile-ranked across the full ticker universe (
 | < 20        | Red         | Avoid      |
 
 Color mappings are applied by `sheets/writeSheet.js` when writing `ScoresCurrent` (Excel ARGB fill values) and are also reflected in `data/report.html` card and table visualizations.
-
-
 
 ## Prerequisites
 
@@ -296,10 +294,11 @@ This generates `data/report.html` with the new ticker included in the score card
 5. (Optional) Publish the report to GitHub Pages:
 
 1. Commit the updated `data/report.html` to your repository.
-2. Push to the `main` branch.
-3. The report will automatically update at `https://srijaipur.github.io/stocks-analytics-engine/index.html` (assuming GitHub Actions or manual deployment is configured).
+1. Push to the `main` branch.
+1. The report will automatically update at `https://srijaipur.github.io/stocks-analytics-engine/index.html` (assuming GitHub Actions or manual deployment is configured).
 
 > **Notes:**
+>
 > - Invalid or delisted tickers will cause errors during data fetching. Verify the ticker exists before adding.
 > - The report only includes tickers that have successfully been processed and scored.
 > - For bulk additions, add multiple tickers at once and follow the same steps.
@@ -329,32 +328,32 @@ docker run -v "${PWD}/data:/app/data" stocks-analytics-engine
 
 ### Production
 
-| Package                  | Purpose                                                      |
-| ------------------------ | ------------------------------------------------------------ |
-| `@stonksjs/finviz`       | Finviz quote helper and screener scraping                    |
-| `axios`                  | HTTP client for NASDAQ API and internal patches              |
-| `cookie-parser`          | Express middleware for parsing cookies                       |
-| `cors`                   | Cross-origin resource sharing middleware                     |
-| `dayjs`                  | Lightweight date handling                                    |
-| `dotenv`                 | Environment variable loading from `.env`                     |
-| `exceljs`                | Read/write Excel workbooks (.xlsx)                           |
-| `express`                | Web server framework for protected routes                    |
-| `firebase`               | Client-side Firebase SDK for auth                            |
-| `firebase-admin`         | Admin SDK for token verification and management              |
-| `helmet`                 | Security middleware (headers hardening)                      |
-| `morgan`                 | HTTP request logger                                          |
-| `simple-statistics`      | Percentile and statistical helpers                           |
-| `yahoo-finance2`         | Historical price data fetcher                                |
+| Package             | Purpose                                         |
+| ------------------- | ----------------------------------------------- |
+| `@stonksjs/finviz`  | Finviz quote helper and screener scraping       |
+| `axios`             | HTTP client for NASDAQ API and internal patches |
+| `cookie-parser`     | Express middleware for parsing cookies          |
+| `cors`              | Cross-origin resource sharing middleware        |
+| `dayjs`             | Lightweight date handling                       |
+| `dotenv`            | Environment variable loading from `.env`        |
+| `exceljs`           | Read/write Excel workbooks (.xlsx)              |
+| `express`           | Web server framework for protected routes       |
+| `firebase`          | Client-side Firebase SDK for auth               |
+| `firebase-admin`    | Admin SDK for token verification and management |
+| `helmet`            | Security middleware (headers hardening)         |
+| `morgan`            | HTTP request logger                             |
+| `simple-statistics` | Percentile and statistical helpers              |
+| `yahoo-finance2`    | Historical price data fetcher                   |
 
 ### Development
 
-| Package                | Purpose                              |
-| ---------------------- | ------------------------------------ |
-| `@eslint/js`           | ESLint JavaScript configuration      |
-| `eslint`               | Linting tool                         |
-| `eslint-config-prettier` | ESLint + Prettier compatibility    |
-| `globals`              | Global variables for different envs  |
-| `prettier`             | Code formatter                       |
+| Package                  | Purpose                             |
+| ------------------------ | ----------------------------------- |
+| `@eslint/js`             | ESLint JavaScript configuration     |
+| `eslint`                 | Linting tool                        |
+| `eslint-config-prettier` | ESLint + Prettier compatibility     |
+| `globals`                | Global variables for different envs |
+| `prettier`               | Code formatter                      |
 
 ## Configuration
 
@@ -375,6 +374,7 @@ Environment variables are loaded from a `.env` file (never commit to source cont
 **Workbook location:** `sheets/readSheet.js` and `sheets/writeSheet.js` expect the workbook at `data/stocks.xlsx`. Use `scripts/createWorkbook.js` to create or repair it.
 
 **Protected endpoints:** The branch includes Firebase-based authentication for report and analytics endpoints:
+
 - `data/login.html` — Google Sign-In entry point
 - `data/report-loader.html` — Checks for idToken, fetches `/report`
 - `data/analytics-loader.html` — Checks for idToken, fetches `/analytics`

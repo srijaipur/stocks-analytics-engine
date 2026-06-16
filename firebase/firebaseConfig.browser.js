@@ -9,7 +9,7 @@ const firebaseConfig = {
   projectId: "stocks-analytics-platform",
   storageBucket: "stocks-analytics-platform.firebasestorage.app",
   messagingSenderId: "563385076829",
-  appId: "1:563385076829:web:dabe2dd4eb5955200b51b4"
+  appId: "1:563385076829:web:dabe2dd4eb5955200b51b4",
 };
 
 export const app = initializeApp(firebaseConfig);

@@ -6,57 +6,37 @@ import http from "http";
 
 import { firebaseConfig } from "./firebase/firebaseConfig.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
 
-const __dirname = path.dirname(
-  fileURLToPath(import.meta.url)
-);
+const OUTPUT_PATH = path.resolve(__dirname, "data/analytics.html");
 
-const WORKBOOK_PATH = path.resolve(
-  __dirname,
-  "data/stocks.xlsx"
-);
-
-const OUTPUT_PATH = path.resolve(
-  __dirname,
-  "data/analytics.html"
-);
-
-const SERVE =
-  process.argv.includes("--serve");
+const SERVE = process.argv.includes("--serve");
 
 // ======================================================
 // READ EXCEL
 // ======================================================
 
 async function readData() {
-
-  
-
   const wb = new ExcelJS.Workbook();
 
   await wb.xlsx.readFile(WORKBOOK_PATH);
 
   const rows = [];
 
-  const sheet =
-    wb.getWorksheet("ScoresCurrent");
+  const sheet = wb.getWorksheet("ScoresCurrent");
 
   if (!sheet) {
-
-    throw new Error(
-      "ScoresCurrent worksheet missing"
-    );
+    throw new Error("ScoresCurrent worksheet missing");
   }
 
   sheet.eachRow((row, i) => {
-
     if (i === 1) return;
 
     const vals = row.values.slice(1);
 
     const obj = {
-
       Ticker: vals[0],
 
       EPS_TTM: vals[1],
@@ -95,7 +75,7 @@ async function readData() {
 
       Earnings_Date: vals[18],
 
-      Daily_Composite_Score_delta: vals[19]
+      Daily_Composite_Score_delta: vals[19],
     };
 
     if (obj.Ticker) {
@@ -111,9 +91,7 @@ async function readData() {
 // ======================================================
 
 function buildHtml(data) {
-
-  const safe = JSON.stringify(data)
-    .replace(/</g, "\\u003c");
+  const safe = JSON.stringify(data).replace(/</g, "\\u003c");
 
   return `<!DOCTYPE html>
 <html>
@@ -1984,81 +1962,47 @@ function renderRSIRegimeChart() {
 // ======================================================
 
 (async () => {
+  const data = await readData();
 
-  const data =
-    await readData();
+  const html = buildHtml(data);
 
-  const html =
-    buildHtml(data);
+  fs.writeFileSync(OUTPUT_PATH, html);
 
-  fs.writeFileSync(
-    OUTPUT_PATH,
-    html
-  );
-
-  console.log(
-    "analytics.html generated"
-  );
+  console.log("analytics.html generated");
 
   if (SERVE) {
-
     http
-  .createServer(
-    (req, res) => {
+      .createServer((req, res) => {
+        // ==========================================
+        // API: analytics runtime data
+        // ==========================================
 
-      // ==========================================
-      // API: analytics runtime data
-      // ==========================================
-
-      if (
-        req.url ===
-        "/api/analytics-data.js"
-      ) {
-
-        const payload =
-          `
+        if (req.url === "/api/analytics-data.js") {
+          const payload = `
 window.__ANALYTICS__ = ${JSON.stringify(data)};
 `;
 
-        res.writeHead(
-          200,
-          {
-            "Content-Type":
-              "application/javascript"
-          }
-        );
+          res.writeHead(200, {
+            "Content-Type": "application/javascript",
+          });
 
-        res.end(payload);
+          res.end(payload);
 
-        return;
-      }
-
-      // ==========================================
-      // DEFAULT: analytics html
-      // ==========================================
-
-      res.writeHead(
-        200,
-        {
-          "Content-Type":
-            "text/html"
+          return;
         }
-      );
 
-      res.end(html);
+        // ==========================================
+        // DEFAULT: analytics html
+        // ==========================================
 
-    }
-  )
-      .listen(
-        3000,
-        "0.0.0.0",
-        () => {
+        res.writeHead(200, {
+          "Content-Type": "text/html",
+        });
 
-          console.log(
-            "Server running at http://localhost:3000"
-          );
-        }
-      );
+        res.end(html);
+      })
+      .listen(3000, "0.0.0.0", () => {
+        console.log("Server running at http://localhost:3000");
+      });
   }
-
 })();

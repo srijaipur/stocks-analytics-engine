@@ -5,7 +5,6 @@ import { initializeApp } from "firebase/app";
 // =====================================================
 
 export const firebaseConfig = {
-
   apiKey: "AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw",
 
   authDomain: "stocks-analytics-platform.firebaseapp.com",
@@ -16,13 +15,11 @@ export const firebaseConfig = {
 
   messagingSenderId: "563385076829",
 
-  appId: "1:563385076829:web:dabe2dd4eb5955200b51b4"
+  appId: "1:563385076829:web:dabe2dd4eb5955200b51b4",
 };
 
 // =====================================================
 // CANONICAL APP SINGLETON
 // =====================================================
 
-export const app = initializeApp(
-  firebaseConfig
-);
+export const app = initializeApp(firebaseConfig);
