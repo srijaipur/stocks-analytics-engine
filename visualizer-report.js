@@ -77,6 +77,19 @@ function buildHtml(rows) {
   .search-wrap { padding: 0 24px 16px; }
   input[type=search] { width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid #2d3344; background: #0f1117; color: #e0e0e0; }
   .page { padding: 0 24px 24px; }
+
+  .analytics-link {  font-size: 0.78rem;  padding: 0.35rem 0.8rem; 
+  border-radius: 999px; border: 1px solid #2196f355; background:
+   #0d1a2e; color: #90caf9; text-decoration: none; font-weight: 
+   600; transition: all 0.15s ease;
+   /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+    }
+  .analytics-link:hover {  background: #13233d; border-color: #64b5f6;}
   .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; padding: 0 24px 24px; }
   .ticker-card { border-radius: 16px; padding: 14px; background: #1b2030; border: 1px solid #2d3344; }
   .ticker-card h2 { font-size: 0.9rem; margin-bottom: 8px; color: #d1d9ff; }
@@ -94,6 +107,7 @@ function buildHtml(rows) {
   .pill.red { background: rgba(244, 67, 54, 0.16); color: #ef9a9a; }
   .summary-line { margin-top: 8px; color: #8a97b3; font-size: 0.94rem; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <div id="auth"></div>
@@ -101,8 +115,13 @@ function buildHtml(rows) {
 <header>
   <div>
     <h1>Stocks Analytics Report</h1>
-    <div class="subtitle">Authenticated client report built from data/stocks.xlsx</div>
+    <div class="subtitle">Authenticated client report built from Stocks Universe</div>
   </div>
+  <div>
+  <a class="analytics-link" href="analytics-loader.html">
+  Advanced Anlytical Signals →
+</a>
+</div>
   <button id="logoutBtn" class="logout-btn">Logout</button>
 </header>
 <div class="page">
@@ -110,6 +129,28 @@ function buildHtml(rows) {
     <input type="search" id="filterInput" placeholder="Filter by ticker or metric..." />
   </div>
   <div class="card-grid" id="cardGrid"></div>
+  <!-- Upcoming Earnings (next 7 days) -->
+<div class="earnings-section">
+  <h2>&#128197; Upcoming Earnings &mdash; Next 7 Days</h2>
+  <div class="earnings-strip" id="earningsStrip"></div>
+</div>
+
+<div class="grid">
+
+  <!-- Alpha vs RSI Scatter -->
+  <div class="card">
+    <h2>Jensen's Alpha (63D) vs RSI-14</h2>
+    <canvas id="scatterChart"></canvas>
+  </div>
+
+  <!-- MA Slope vs Composite -->
+  <div class="card">
+    <h2>Composite Score vs MA Slope (50D)</h2>
+    <canvas id="slopeChart"></canvas>
+  </div>
+
+</div>
+
   <div class="card table-wrap">
     <h2>Full Scores Table</h2>
     <div class="summary-line" id="rowCount"></div>
@@ -139,11 +180,71 @@ const tableBody = document.getElementById("tableBody");
 const rowCount = document.getElementById("rowCount");
 const logoutBtn = document.getElementById("logoutBtn");
 
+// ===============================
+// SENTINEL SCHEMA ADAPTER (SOURCE OF TRUTH)
+// ===============================
+const schema = {
+  ticker: (r) => r.Ticker,
+
+  // Earnings proxy (since no EarningsDate exists in current dataset)
+  earningsScore: (r) => Number(r.EPS_Percentile ?? 0),
+
+  // Scatter: momentum / growth relationship
+  scatterX: (r) => Number(r.EPS_Percentile ?? 0),
+  scatterY: (r) => Number(r.EPS_Growth ?? 0),
+
+  // Slope: fundamentals vs institutional flow
+  slopeX: (r) => Number(r.EPS_TTM ?? 0),
+  slopeY: (r) => Number(r.Inst_Accumulation ?? 0)
+};
+
+window.__ROWS__ = rows;
+
 function scoreTier(score) {
   if (score >= 70) return { label: "Strong Buy", style: "green" };
   if (score >= 50) return { label: "Monitor", style: "blue" };
   if (score >= 30) return { label: "Weak", style: "orange" };
   return { label: "Reduce", style: "red" };
+}
+
+function getTier(score) {
+  if (score >= 70) {
+    return {
+      label: "Strong Buy",
+      scoreColor: "#81c784"
+    };
+  }
+
+  if (score >= 50) {
+    return {
+      label: "Monitor",
+      scoreColor: "#90caf9"
+    };
+  }
+
+  if (score >= 30) {
+    return {
+      label: "Weak",
+      scoreColor: "#ffb74d"
+    };
+  }
+
+  return {
+    label: "Reduce",
+    scoreColor: "#ef9a9a"
+  };
+}
+
+function scoreColor(score) {
+  return getTier(score).scoreColor;
+}
+
+function fmt(v) {
+  if (v == null || Number.isNaN(v)) {
+    return "—";
+  }
+
+  return Number(v).toFixed(2);
 }
 
 function renderLoginScreen() {
@@ -192,14 +293,14 @@ function renderCards(data) {
       '<h2>' + (item.Ticker || "—") + '</h2>' +
       '<p><strong>Score:</strong> ' + formatValue(score) + '</p>' +
       '<p><span class="pill ' + tier.style + '">' + tier.label + '</span></p>' +
-      '<p><strong>RSI:</strong> ' + formatValue(item.RSI) + '</p>' +
+      '<p><strong>RSI:</strong> ' + formatValue(item.RSI_14Day) + '</p>' +
       '<p><strong>63D Return:</strong> ' + formatValue(item.Return_63D) + '%</p>' +
       '</div>';
   }).join('');
 }
 
 function renderTable(data) {
-  const headers = ["Ticker", "Composite_Score", "EPS_TTM", "RSI", "MA_Slope", "Drawdown_pct", "Return_63D", "Alpha_63D", "RS_vs_SP100"];
+  const headers = ["Ticker", "Composite_Score", "EPS_TTM", "RSI_14Day", "MA_Slope_50", "Drawdown_%", "Return_63D", "Alpha_63D", "RS_vs_SP100"];
   tableHead.innerHTML = '<tr>' + headers.map((h) => '<th>' + h + '</th>').join('') + '</tr>';
   tableBody.innerHTML = data.map((item) => {
     return '<tr>' + headers.map((h, index) => {
@@ -210,11 +311,19 @@ function renderTable(data) {
   rowCount.textContent = data.length + ' rows displayed';
 }
 
+
 function bootApp() {
   authEl.innerHTML = '';
   appEl.classList.remove('hidden');
   renderCards(rows);
   renderTable(rows);
+  const scatter = Chart.getChart("scatterChart");
+if (scatter) scatter.destroy();
+
+const slope = Chart.getChart("slopeChart");
+if (slope) slope.destroy();
+
+  initCharts(rows);
   logoutBtn.onclick = async () => {
     await signOut(auth);
     window.location.reload();
@@ -226,8 +335,158 @@ function bootApp() {
     });
     renderCards(filtered);
     renderTable(filtered);
+    initCharts(rows);
   });
 }
+
+function initCharts(rows) {
+  try {
+
+  if (window.__chartsInitialized) return;
+window.__chartsInitialized = true;
+
+  if (!rows || !rows.length) {
+  console.warn("No data available for charts");
+  return;
+}
+    // --- Earnings strip placeholder ---
+    const strip = document.getElementById("earningsStrip");
+    if (strip) {
+      const upcoming = rows
+  .sort((a, b) => schema.earningsScore(b) - schema.earningsScore(a))
+  .slice(0, 12);
+
+strip.innerHTML = upcoming
+  .map(r => {
+    return "<div style='padding:8px 12px;margin:4px;background:#1b2030;border-radius:10px;display:inline-block;'>"
+      + "<strong>" + (r.Ticker || "") + "</strong><br/>"
+      + "<span style='color:#8a97b3;font-size:12px;'>" + (r.Earnings_Date || "—") + "</span>"
+      + "</div>";
+  })
+  .join("");
+
+   
+    }
+       //Plugin for Quadrants in Charts
+       const quadrantPlugin = {
+  id: "quadrants",
+  afterDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+
+    if (!chartArea) return;
+
+    const xMid = (scales.x.min + scales.x.max) / 2;
+    const yMid = (scales.y.min + scales.y.max) / 2;
+
+    const xPixel = scales.x.getPixelForValue(xMid);
+    const yPixel = scales.y.getPixelForValue(yMid);
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1;
+
+    // vertical line
+    ctx.beginPath();
+    ctx.moveTo(xPixel, chartArea.top);
+    ctx.lineTo(xPixel, chartArea.bottom);
+    ctx.stroke();
+
+    // horizontal line
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, yPixel);
+    ctx.lineTo(chartArea.right, yPixel);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+};
+//Plugin for Quadrants in Charts
+
+
+
+
+
+    // --- Scatter Chart (Alpha vs RSI) ---
+    const scatterCtx = document.getElementById("scatterChart");
+    if (scatterCtx && window.Chart) {
+      new Chart(scatterCtx, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: "Alpha vs RSI",
+            data: rows.map(r => ({
+              x: Number(r.RSI_14Day ?? 0),
+              y: Number(r.Alpha_63D ?? 0)
+            }))
+          }]
+        },
+        plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
+       options: {
+  responsive: true,
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: "RSI (0–100)"
+      },
+      min: 0,
+      max: 100
+    },
+    y: {
+      title: {
+        display: true,
+        text: "Alpha (63D)"
+      }
+    }
+  }
+}
+        
+      });
+    }
+
+    // --- Slope Chart (MA Slope vs Composite) ---
+    const slopeCtx = document.getElementById("slopeChart");
+    if (slopeCtx && window.Chart) {
+      new Chart(slopeCtx, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: "MA Slope vs Composite",
+            data: rows.map(r => ({
+              x: Number(r.MA_Slope_50 ?? 0),
+              y: Number(r.Composite_Score ?? 0)
+            }))
+          }]
+        },
+        plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
+        options: {
+  responsive: true,
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: "MA Slope (50D)"
+      }
+    },
+    y: {
+      title: {
+        display: true,
+        text: "Composite Score"
+      }
+    }
+  }
+}
+      });
+    }
+
+  } catch (e) {
+    console.error("Chart init failed:", e);
+  }
+}
+
+window.initCharts = initCharts;
+ 
+
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {

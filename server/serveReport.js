@@ -33,7 +33,10 @@ async function loadAnalyticsData() {
     const normalizeKey = (k) => {
       if (k === "Drawdown_%") return "Drawdown_pct";
       return k;
+      if (k === "RSI") return "RSI_14Day";
     };
+
+    
 
     row.eachCell((cell, colNumber) => {
       obj[normalizeKey(headers[colNumber])] = cell.value;

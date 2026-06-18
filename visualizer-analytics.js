@@ -14,6 +14,11 @@ const OUTPUT_PATH = path.resolve(__dirname, "data/analytics.html");
 
 const SERVE = process.argv.includes("--serve");
 
+
+
+
+
+
 // ======================================================
 // READ EXCEL
 // ======================================================
@@ -246,6 +251,25 @@ canvas {
   padding: 0 2rem 2rem;
 }
 
+.analytics-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  background: #1d2330;
+  color: #ffffff;
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08);
+}
+
+#momentumTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #1d2330;
+}
+
 </style>
 
 </head>
@@ -355,6 +379,7 @@ canvas {
 
     <table
       id="analyticsTable"
+      class="analytics-table"
       style="
         width:100%;
         border-collapse:collapse;
@@ -481,6 +506,7 @@ canvas {
 
       <table
         id="momentumTable"
+         class="analytics-table"
         style="
           width:100%;
           border-collapse:collapse;
@@ -497,25 +523,25 @@ canvas {
             "
           >
 
-            <th style="padding:12px;">
-              Ticker
-            </th>
+            <th id="sortTicker" style="padding:12px;cursor:pointer;">
+  Ticker ↕
+</th>
 
-            <th style="padding:12px;">
-              Delta
-            </th>
+<th id="sortDelta" style="padding:12px;cursor:pointer;">
+  Delta ↕
+</th>
 
-            <th style="padding:12px;">
-              Composite
-            </th>
+<th id="sortComposite" style="padding:12px;cursor:pointer;">
+  Composite ↕
+</th>
 
-            <th style="padding:12px;">
-              RSI
-            </th>
+<th id="sortRSI" style="padding:12px;cursor:pointer;">
+  RSI ↕
+</th>
 
-            <th style="padding:12px;">
-              MA Slope
-            </th>
+<th id="sortMASlope" style="padding:12px;cursor:pointer;">
+  MA Slope ↕
+</th>
 
           </tr>
 
@@ -801,6 +827,8 @@ function bootAuthenticatedApp() {
   renderSignals();
 
   renderRisk();
+
+  renderTrendChart();
 }
 
 // ======================================================
@@ -1132,7 +1160,7 @@ function renderSignals() {
     topN(
       rows,
       r =>
-        (r.RSI || 0) +
+        (r.RSI_14Day || 0) +
         (r.MA_Slope || 0)
     );
 
@@ -1343,20 +1371,19 @@ function renderMomentumLadder() {
   }
 
   const sorted =
-    [...rows].sort(
-      (a, b) => {
+  [...rows].sort((a,b) => {
 
-        return (
-          Number(
-            b.Daily_Composite_Score_delta || 0
-          ) -
+    let av;
+    let bv;
 
-          Number(
-            a.Daily_Composite_Score_delta || 0
-          )
-        );
-      }
-    );
+   
+
+    const result =
+      av > bv ? 1 :
+      av < bv ? -1 : 0;
+
+    
+  });
 
   body.innerHTML =
     sorted
@@ -1728,7 +1755,7 @@ function renderRSIRegimeChart() {
 
       const rsi =
   Number(
-    r.RSI || 0
+    r.RSI_14Day || 0
   );
 
       const score =
@@ -2006,3 +2033,5 @@ window.__ANALYTICS__ = ${JSON.stringify(data)};
       });
   }
 })();
+
+
