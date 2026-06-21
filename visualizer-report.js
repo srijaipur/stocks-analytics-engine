@@ -129,9 +129,9 @@ function buildHtml(rows) {
     <input type="search" id="filterInput" placeholder="Filter by ticker or metric..." />
   </div>
   <div class="card-grid" id="cardGrid"></div>
-  <!-- Upcoming Earnings (next 7 days) -->
+  <!-- Upcoming Earnings (next 14 days) -->
 <div class="earnings-section">
-  <h2>&#128197; Upcoming Earnings &mdash; Next 7 Days</h2>
+  <h2>&#128197; Upcoming Earnings &mdash; Next 14 Days</h2>
   <div class="earnings-strip" id="earningsStrip"></div>
 </div>
 
@@ -339,6 +339,17 @@ if (slope) slope.destroy();
   });
 }
 
+//TO ADD COLORING SCHEMA TO SCATTER POINTS IN LINE WITH TIERING 
+// (STRONG BUY, MONITOR, WEAK, REDUCE)
+function getTierColor(score) {
+  if (score >= 70) return "#81c784"; // Strong Buy
+  if (score >= 50) return "#90caf9"; // Monitor
+  if (score >= 30) return "#ffb74d"; // Weak
+  return "#ef9a9a"; // Reduce
+}
+
+
+
 function initCharts(rows) {
   try {
 
@@ -349,11 +360,24 @@ window.__chartsInitialized = true;
   console.warn("No data available for charts");
   return;
 }
-    // --- Earnings strip placeholder ---
+    // --- Earnings strip placeholder starts here---
     const strip = document.getElementById("earningsStrip");
     if (strip) {
-      const upcoming = rows
-  .sort((a, b) => schema.earningsScore(b) - schema.earningsScore(a))
+      const now = new Date();
+now.setHours(0, 0, 0, 0);
+
+const in14 = new Date(now.getTime() + 14 * 86400000);
+
+const upcoming = rows
+  .filter(r => {
+    if (!r.Earnings_Date) return false;
+
+    const d = new Date(r.Earnings_Date);
+    if (isNaN(d)) return false;
+
+    return d >= now && d <= in14;
+  })
+  .sort((a, b) => new Date(a.Earnings_Date) - new Date(b.Earnings_Date))
   .slice(0, 12);
 
 strip.innerHTML = upcoming
@@ -367,40 +391,110 @@ strip.innerHTML = upcoming
 
    
     }
-       //Plugin for Quadrants in Charts
+
+    // --- Earnings strip placeholder ends here---
+
+       //Plugin for Quadrants in Charts starts here
        const quadrantPlugin = {
   id: "quadrants",
+
   afterDraw(chart) {
     const { ctx, chartArea, scales } = chart;
-
     if (!chartArea) return;
 
-    const xMid = (scales.x.min + scales.x.max) / 2;
-    const yMid = (scales.y.min + scales.y.max) / 2;
+    // 🔒 ISOLATION GUARD (CRITICAL)
+    if (chart.canvas.id !== "scatterChart") return;
+
+    const xMin = scales.x.min;
+    const xMax = scales.x.max;
+    const yMin = scales.y.min;
+    const yMax = scales.y.max;
+
+    const xMid = (xMin + xMax) / 2;
+    const yMid = (yMin + yMax) / 2;
 
     const xPixel = scales.x.getPixelForValue(xMid);
     const yPixel = scales.y.getPixelForValue(yMid);
 
     ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+
+    // =========================
+    // GRID + QUADRANT BASE LAYER
+    // =========================
+
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
     ctx.lineWidth = 1;
 
-    // vertical line
+    // vertical split (RSI midpoint)
     ctx.beginPath();
     ctx.moveTo(xPixel, chartArea.top);
     ctx.lineTo(xPixel, chartArea.bottom);
     ctx.stroke();
 
-    // horizontal line
+    // horizontal split (Alpha midpoint)
     ctx.beginPath();
     ctx.moveTo(chartArea.left, yPixel);
     ctx.lineTo(chartArea.right, yPixel);
     ctx.stroke();
 
+    // subtle quadrant shading
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+
+    ctx.fillRect(chartArea.left, chartArea.top, xPixel - chartArea.left, yPixel - chartArea.top); // Q1
+    ctx.fillRect(xPixel, chartArea.top, chartArea.right - xPixel, yPixel - chartArea.top);       // Q2
+    ctx.fillRect(chartArea.left, yPixel, xPixel - chartArea.left, chartArea.bottom - yPixel);    // Q3
+    ctx.fillRect(xPixel, yPixel, chartArea.right - xPixel, chartArea.bottom - yPixel);           // Q4
+
+    // =========================
+    // LABEL LAYER (SINGLE PASS)
+    // =========================
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 12px system-ui";
+    ctx.shadowColor = "rgba(0,0,0,0.85)";
+    ctx.shadowBlur = 6;
+    ctx.textBaseline = "top";
+
+    // responsive padding (no magic numbers)
+    const padX = 10;
+    const padY = 10;
+
+    const rightPad = 140; // safe offset for right-side labels
+
+    // Q1
+    ctx.fillText(
+      "Q1 Strong Momentum",
+      chartArea.left + padX,
+      chartArea.top + padY
+    );
+
+    // Q2
+    ctx.fillText(
+      "Q2 Overbought Strong",
+      chartArea.right - rightPad,
+      chartArea.top + padY
+    );
+
+    // Q3
+    ctx.fillText(
+      "Q3 Accumulation Zone",
+      chartArea.left + padX,
+      chartArea.bottom - 18
+    );
+
+    // Q4
+    ctx.fillText(
+      "Q4 Weak Trap Zone",
+      chartArea.right - rightPad,
+      chartArea.bottom - 18
+    );
+
     ctx.restore();
   }
 };
-//Plugin for Quadrants in Charts
+       //Plugin for Quadrants in Charts ends here
+       
+       
 
 
 
@@ -409,6 +503,60 @@ strip.innerHTML = upcoming
     // --- Scatter Chart (Alpha vs RSI) ---
     const scatterCtx = document.getElementById("scatterChart");
     if (scatterCtx && window.Chart) {
+
+    //Code for coloring points based on Composite_Score tiering 
+    // is added in the data mapping below, 
+    // using getTierColor function to assign colors according to the defined score tiers 
+    // (Strong Buy, Monitor, Weak, Reduce).
+
+    
+// ===============================
+// SCATTER LEGEND (TIER COLORS ONLY) STARTS HERE
+// ===============================
+const legendEl = document.createElement("div");
+legendEl.style.display = "flex";
+legendEl.style.gap = "10px";
+legendEl.style.margin = "8px 0 12px 0";
+legendEl.style.flexWrap = "wrap";
+legendEl.style.fontSize = "12px";
+legendEl.style.color = "#e0e0e0";
+
+const legendItems = [
+  { label: "Strong Buy (70+)", color: "#81c784" },
+  { label: "Monitor (50-70)", color: "#90caf9" },
+  { label: "Weak (30-50)", color: "#ffb74d" },
+  { label: "Reduce (<30)", color: "#ef9a9a" }
+];
+
+legendItems.forEach(item => {
+  const el = document.createElement("div");
+  el.style.display = "flex";
+  el.style.alignItems = "center";
+  el.style.gap = "6px";
+
+  const dot = document.createElement("span");
+  dot.style.width = "10px";
+  dot.style.height = "10px";
+  dot.style.borderRadius = "50%";
+  dot.style.background = item.color;
+  dot.style.display = "inline-block";
+
+  const text = document.createElement("span");
+  text.innerText = item.label;
+
+  el.appendChild(dot);
+  el.appendChild(text);
+
+  legendEl.appendChild(el);
+});
+
+// attach legend ABOVE scatter canvas safely
+scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
+
+// ===============================
+// SCATTER LEGEND (TIER COLORS ONLY) ENDS HERE
+// ===============================
+
       new Chart(scatterCtx, {
         type: "scatter",
         data: {
@@ -416,13 +564,56 @@ strip.innerHTML = upcoming
             label: "Alpha vs RSI",
             data: rows.map(r => ({
               x: Number(r.RSI_14Day ?? 0),
-              y: Number(r.Alpha_63D ?? 0)
-            }))
+              y: Number(r.Alpha_63D ?? 0),
+              ticker: r.Ticker ?? "",
+              score: Number(r.Composite_Score ?? 0),
+              backgroundColor: getTierColor(r.Composite_Score),
+              pointBackgroundColor: getTierColor(r.Composite_Score),
+              pointRadius: 7,
+              hoverRadius: 9
+    }))
           }]
         },
         plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
-       options: {
+        options: {
+        //Strict Visal Layer to overide for point dimensions in chart start here.
+        elements: {
+          point: {
+            radius: 6,              // FIX: stronger visibility
+            hoverRadius: 8,
+            borderWidth: 1.2
+          }
+        },
+        //Strict Visual Layer to override for point dimensions in chart ends here.
+
   responsive: true,
+
+  plugins: {
+    legend: {
+      display: false
+    },
+
+    tooltip: {
+      callbacks: {
+        label(ctx) {
+          const d = ctx.raw || {};
+
+          const ticker = d.ticker || "—";
+          const rsi = d.x ?? "—";
+          const alpha = d.y ?? "—";
+          const score = d.score ?? "—";
+
+          return (
+            ticker +
+            " RSI=" + fmt(rsi) +
+            " α=" + fmt(alpha) +
+            " score=" + fmt(score)
+          );
+        }
+      }
+    }
+  },
+
   scales: {
     x: {
       title: {
@@ -454,13 +645,44 @@ strip.innerHTML = upcoming
             label: "MA Slope vs Composite",
             data: rows.map(r => ({
               x: Number(r.MA_Slope_50 ?? 0),
-              y: Number(r.Composite_Score ?? 0)
-            }))
+              y: Number(r.Composite_Score ?? 0),
+              ticker: r.Ticker ?? "",
+              score: Number(r.Composite_Score ?? 0),
+              backgroundColor: "#90caf9",
+              pointBackgroundColor: "#90caf9",
+              pointRadius: 7,
+              hoverRadius: 9
+             }))
           }]
         },
         plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
         options: {
   responsive: true,
+
+  plugins: {
+    legend: {
+      display: false
+    },
+
+    tooltip: {
+      callbacks: {
+        label(ctx) {
+          const d = ctx.raw || {};
+
+          const ticker = d.ticker || "—";
+          const slope = d.x ?? "—";
+          const score = d.y ?? "—";
+
+          return (
+            ticker +
+            " slope=" + fmt(slope) +
+            " score=" + fmt(score)
+          );
+        }
+      }
+    }
+  },
+
   scales: {
     x: {
       title: {
@@ -475,7 +697,7 @@ strip.innerHTML = upcoming
       }
     }
   }
-}
+} 
       });
     }
 
