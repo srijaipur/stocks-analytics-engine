@@ -342,9 +342,9 @@ if (slope) slope.destroy();
 //TO ADD COLORING SCHEMA TO SCATTER POINTS IN LINE WITH TIERING 
 // (STRONG BUY, MONITOR, WEAK, REDUCE)
 function getTierColor(score) {
-  if (score >= 70) return "#81c784"; // Strong Buy
-  if (score >= 50) return "#90caf9"; // Monitor
-  if (score >= 30) return "#ffb74d"; // Weak
+  if (score >= 70) return "#4ade80"; // Strong Buy
+  if (score >= 50) return "#60a5fa"; // Monitor
+  if (score >= 30) return "#fbbf24"; // Weak
   return "#ef9a9a"; // Reduce
 }
 
@@ -395,108 +395,95 @@ strip.innerHTML = upcoming
     // --- Earnings strip placeholder ends here---
 
        //Plugin for Quadrants in Charts starts here
-       const quadrantPlugin = {
-  id: "quadrants",
+       //Plugin block for slope Chart starts here
+       const slopeQuadrantPlugin = {
+  id: "slopeQuadrants",
 
   afterDraw(chart) {
+    if (chart.canvas.id !== "slopeChart") return;
+
     const { ctx, chartArea, scales } = chart;
     if (!chartArea) return;
 
-    // 🔒 ISOLATION GUARD (CRITICAL)
-    if (chart.canvas.id !== "scatterChart") return;
-
-    const xMin = scales.x.min;
-    const xMax = scales.x.max;
-    const yMin = scales.y.min;
-    const yMax = scales.y.max;
-
-    const xMid = (xMin + xMax) / 2;
-    const yMid = (yMin + yMax) / 2;
+    const xMid = (scales.x.min + scales.x.max) / 2;
+    const yMid = (scales.y.min + scales.y.max) / 2;
 
     const xPixel = scales.x.getPixelForValue(xMid);
     const yPixel = scales.y.getPixelForValue(yMid);
 
     ctx.save();
 
-    // =========================
-    // GRID + QUADRANT BASE LAYER
-    // =========================
-
+    // cross lines
     ctx.strokeStyle = "rgba(255,255,255,0.12)";
     ctx.lineWidth = 1;
 
-    // vertical split (RSI midpoint)
     ctx.beginPath();
     ctx.moveTo(xPixel, chartArea.top);
     ctx.lineTo(xPixel, chartArea.bottom);
     ctx.stroke();
 
-    // horizontal split (Alpha midpoint)
     ctx.beginPath();
     ctx.moveTo(chartArea.left, yPixel);
     ctx.lineTo(chartArea.right, yPixel);
     ctx.stroke();
 
-    // subtle quadrant shading
-    ctx.fillStyle = "rgba(255,255,255,0.03)";
-
-    ctx.fillRect(chartArea.left, chartArea.top, xPixel - chartArea.left, yPixel - chartArea.top); // Q1
-    ctx.fillRect(xPixel, chartArea.top, chartArea.right - xPixel, yPixel - chartArea.top);       // Q2
-    ctx.fillRect(chartArea.left, yPixel, xPixel - chartArea.left, chartArea.bottom - yPixel);    // Q3
-    ctx.fillRect(xPixel, yPixel, chartArea.right - xPixel, chartArea.bottom - yPixel);           // Q4
-
-    // =========================
-    // LABEL LAYER (SINGLE PASS)
-    // =========================
-
-    ctx.fillStyle = "#ffffff";
+    // labels (INVESTOR SEMANTICS)
+    ctx.fillStyle = "#fff";
     ctx.font = "bold 12px system-ui";
-    ctx.shadowColor = "rgba(0,0,0,0.85)";
-    ctx.shadowBlur = 6;
-    ctx.textBaseline = "top";
 
-    // responsive padding (no magic numbers)
-    const padX = 10;
-    const padY = 10;
-
-    const rightPad = 140; // safe offset for right-side labels
-
-    // Q1
-    ctx.fillText(
-      "Q1 Strong Momentum",
-      chartArea.left + padX,
-      chartArea.top + padY
-    );
-
-    // Q2
-    ctx.fillText(
-      "Q2 Overbought Strong",
-      chartArea.right - rightPad,
-      chartArea.top + padY
-    );
-
-    // Q3
-    ctx.fillText(
-      "Q3 Accumulation Zone",
-      chartArea.left + padX,
-      chartArea.bottom - 18
-    );
-
-    // Q4
-    ctx.fillText(
-      "Q4 Weak Trap Zone",
-      chartArea.right - rightPad,
-      chartArea.bottom - 18
-    );
+    ctx.fillText("Q1 🚀 Strong + improving (best stocks)", chartArea.left + 10, chartArea.top + 10);
+    ctx.fillText("Q2 ⚠️ High quality but deteriorating", chartArea.right - 160, chartArea.top + 10);
+    ctx.fillText("Q3 ❌ Weak + declining", chartArea.left + 10, chartArea.bottom - 20);
+    ctx.fillText("Q4 🔄 Improving but low quality (speculative reversal)", chartArea.right - 160, chartArea.bottom - 20);
 
     ctx.restore();
   }
 };
-       //Plugin for Quadrants in Charts ends here
-       
-       
+       //Plugin block for slope Chart ends here
 
+       //Plugin block for scatter Chart starts here
+       const rsiAlphaQuadrantPlugin = {
+  id: "rsiAlphaQuadrants",
 
+  afterDraw(chart) {
+    if (chart.canvas.id !== "scatterChart") return;
+
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+
+    const xMid = (scales.x.min + scales.x.max) / 2;
+    const yMid = (scales.y.min + scales.y.max) / 2;
+
+    const xPixel = scales.x.getPixelForValue(xMid);
+    const yPixel = scales.y.getPixelForValue(yMid);
+
+    ctx.save();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(xPixel, chartArea.top);
+    ctx.lineTo(xPixel, chartArea.bottom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, yPixel);
+    ctx.lineTo(chartArea.right, yPixel);
+    ctx.stroke();
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui";
+
+    ctx.fillText("Q1 Overheated Alpha", chartArea.right - 160, chartArea.top + 10);
+    ctx.fillText("Q2 Alpha Accumulation", chartArea.left + 10, chartArea.top + 10);
+    ctx.fillText("Q3 Weak Zone", chartArea.left + 10, chartArea.bottom - 20);
+    ctx.fillText("Q4 Trap / Reversal", chartArea.right - 160, chartArea.bottom - 20);
+
+    ctx.restore();
+  }
+};
+       //Plugin block for scatter Chart ends here
 
 
 
@@ -560,21 +547,38 @@ scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
       new Chart(scatterCtx, {
         type: "scatter",
         data: {
-          datasets: [{
-            label: "Alpha vs RSI",
-            data: rows.map(r => ({
-              x: Number(r.RSI_14Day ?? 0),
-              y: Number(r.Alpha_63D ?? 0),
-              ticker: r.Ticker ?? "",
-              score: Number(r.Composite_Score ?? 0),
-              backgroundColor: getTierColor(r.Composite_Score),
-              pointBackgroundColor: getTierColor(r.Composite_Score),
-              pointRadius: 7,
-              hoverRadius: 9
-    }))
-          }]
+        datasets: [{
+  label: "Alpha vs RSI",
+
+  data: rows.map(r => ({
+    x: Number(r.RSI_14Day ?? 0),
+    y: Number(r.Alpha_63D ?? 0),
+    ticker: r.Ticker ?? "",
+    score: Number(r.Composite_Score ?? 0)
+  })),
+  //plugins: [rsiAlphaQuadrantPlugin],   // ✅ Call to the custom quadrant plugin for scatter chart
+        
+  backgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+  pointBackgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+  pointBorderColor: "#0b1220",
+
+  pointBorderWidth: 1.2,
+
+  pointRadius: rows.map(r => {
+    const s = r.Composite_Score ?? 0;
+
+    if (s >= 70) return 8;   // Strong Buy (emphasis)
+    if (s >= 50) return 7;   // Monitor
+    if (s >= 30) return 6;   // Weak
+    return 5;                // Reduce
+  }),
+
+  hoverRadius: 10
+}]  
         },
-        plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
+      //  plugins: [],   // ✅ Call to the quadrant plugin is not needed for scatter, only slope chart
         options: {
         //Strict Visal Layer to overide for point dimensions in chart start here.
         elements: {
@@ -582,6 +586,7 @@ scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
             radius: 6,              // FIX: stronger visibility
             hoverRadius: 8,
             borderWidth: 1.2
+            
           }
         },
         //Strict Visual Layer to override for point dimensions in chart ends here.
@@ -589,10 +594,6 @@ scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
   responsive: true,
 
   plugins: {
-    legend: {
-      display: false
-    },
-
     tooltip: {
       callbacks: {
         label(ctx) {
@@ -636,27 +637,63 @@ scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
     }
 
     // --- Slope Chart (MA Slope vs Composite) ---
-    const slopeCtx = document.getElementById("slopeChart");
-    if (slopeCtx && window.Chart) {
-      new Chart(slopeCtx, {
-        type: "scatter",
-        data: {
-          datasets: [{
-            label: "MA Slope vs Composite",
-            data: rows.map(r => ({
-              x: Number(r.MA_Slope_50 ?? 0),
-              y: Number(r.Composite_Score ?? 0),
-              ticker: r.Ticker ?? "",
-              score: Number(r.Composite_Score ?? 0),
-              backgroundColor: "#90caf9",
-              pointBackgroundColor: "#90caf9",
-              pointRadius: 7,
-              hoverRadius: 9
-             }))
-          }]
-        },
-        plugins: [quadrantPlugin],   // ✅ Call to the quadrant plugin
+const slopeCtx = document.getElementById("slopeChart");
+if (slopeCtx && window.Chart) {
+
+  new Chart(slopeCtx, {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "MA Slope vs Composite",
+
+        data: rows.map(r => ({
+          x: Number(r.MA_Slope_50 ?? 0),
+          y: Number(r.Composite_Score ?? 0),
+          ticker: r.Ticker ?? "",
+          score: Number(r.Composite_Score ?? 0)
+        })),
+
+        // 🎯 UNIFIED TIER COLOR SYSTEM (same logic as scatter chart)
+        backgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+        pointBackgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+        // 🧠 visual clarity (match scatter UX)
+        pointBorderColor: "#0b1220",
+        pointBorderWidth: 1.2,
+
+        // 📈 tier-aware sizing (same architecture pattern)
+        pointRadius: rows.map(r => {
+          const s = r.Composite_Score ?? 0;
+
+          if (s >= 70) return 8;
+          if (s >= 50) return 7;
+          if (s >= 30) return 6;
+          return 5;
+        }),
+
+        hoverRadius: rows.map(r => {
+    const s = r.Composite_Score ?? 0;
+
+    if (s >= 70) return 11;
+    if (s >= 50) return 10;
+    if (s >= 30) return 9;
+    return 8;
+  })
+      }]
+    },
+        plugins: [slopeQuadrantPlugin],   // ✅ Call to the custom quadrant plugin for slope chart
         options: {
+
+        // To FIX GLovbal ELEMENT COLLISION (CRITICAL) start here
+        elements: {
+  point: {
+    radius: 6,
+    hoverRadius: 10,
+    borderWidth: 1.2,
+    backgroundColor: undefined   // 🧠 IMPORTANT: prevent override bleed
+  }
+},
+  // To FIX GLovbal ELEMENT COLLISION (CRITICAL) start here
   responsive: true,
 
   plugins: {
