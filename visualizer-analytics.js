@@ -1644,9 +1644,11 @@ const quadrantGuide = {
     ctx.save();
 
     ctx.strokeStyle =
-      "rgba(255,255,255,0.25)";
+      "rgba(255,191,0,0.90)";
 
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
+
+    ctx.setLineDash([8,6]);
 
     ctx.beginPath();
 
@@ -1671,6 +1673,49 @@ const quadrantGuide = {
     );
 
     ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ------------------------------------
+// Quadrant Labels
+// ------------------------------------
+
+ctx.fillStyle =
+  "rgba(255,191,0,0.95)";
+
+ctx.font =
+  "bold 13px Arial";
+
+ctx.textAlign =
+  "center";
+
+ctx.textBaseline =
+  "middle";
+
+const pad = 18;
+
+ctx.fillText(
+  "Q2",
+  x.left + pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q1",
+  x.right - pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q3",
+  x.left + pad,
+  y.bottom - pad
+);
+
+ctx.fillText(
+  "Q4",
+  x.right - pad,
+  y.bottom - pad
+);
 
     ctx.restore();
 
