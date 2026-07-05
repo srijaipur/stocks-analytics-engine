@@ -432,7 +432,7 @@ strip.innerHTML = upcoming
     ctx.font = "bold 12px system-ui";
 
     ctx.fillText("Q2 ⚠️ High quality but deteriorating", chartArea.left + 10, chartArea.top + 10);
-    ctx.fillText("", chartArea.right - 160, chartArea.top + 10);
+    ctx.fillText("Q1 🚀 Strong + improving (best stocks)", chartArea.right - 160, chartArea.top + 10);
     ctx.fillText("Q3 ❌ Weak + declining", chartArea.left + 10, chartArea.bottom - 20);
     ctx.fillText("Q4 🔄 Improving but low quality (speculative reversal)", chartArea.right - 160, chartArea.bottom - 20);
 
