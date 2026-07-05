@@ -1502,9 +1502,9 @@ function renderQuadrantChart() {
         );
 
       const slope =
-        Number(
-          r.Daily_Composite_Score_delta || 0
-        );
+  Number(
+    r.MA_Slope_50 || 0
+  );
 
       const rs =
         Number(
@@ -1564,7 +1564,119 @@ function renderQuadrantChart() {
   // VALIDATION LOG
   // ==========================================
 
-  
+  // ==========================================
+// RUNTIME X-AXIS RANGE (MA_Slope_50)
+// ==========================================
+
+const xValues =
+  quadrantData
+    .map(p => p.x)
+    .filter(Number.isFinite);
+
+const xMin =
+  Math.min(...xValues);
+
+const xMax =
+  Math.max(...xValues);
+
+// Prevent zero-width ranges.
+const span =
+  Math.max(
+    xMax - xMin,
+    0.02
+  );
+
+// 15% visual padding.
+const padding =
+  span * 0.15;
+
+  // ==========================================
+// QUADRANT MIDPOINTS
+// ==========================================
+
+const yValues =
+  quadrantData
+    .map(p => p.y)
+    .filter(Number.isFinite);
+
+const xMid =
+  (xMin + xMax) / 2;
+
+const yMin =
+  Math.min(...yValues);
+
+const yMax =
+  Math.max(...yValues);
+
+const yMid =
+  (yMin + yMax) / 2;
+
+  // ==========================================
+// QUADRANT GUIDE PLUGIN
+// ==========================================
+
+const quadrantGuide = {
+
+  id: "quadrantGuide",
+
+  beforeDraw(chart) {
+
+    const {
+
+      ctx,
+
+      scales: {
+
+        x,
+
+        y
+
+      }
+
+    } = chart;
+
+    const xPixel =
+      x.getPixelForValue(xMid);
+
+    const yPixel =
+      y.getPixelForValue(yMid);
+
+    ctx.save();
+
+    ctx.strokeStyle =
+      "rgba(255,255,255,0.25)";
+
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      xPixel,
+      y.top
+    );
+
+    ctx.lineTo(
+      xPixel,
+      y.bottom
+    );
+
+    ctx.moveTo(
+      x.left,
+      yPixel
+    );
+
+    ctx.lineTo(
+      x.right,
+      yPixel
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+
+  }
+
+};
 
   // ==========================================
   // CHART
@@ -1585,6 +1697,11 @@ function renderQuadrantChart() {
           quadrantData
       }]
     },
+    plugins: [
+
+  quadrantGuide
+
+],
 
     options: {
 
@@ -1608,12 +1725,18 @@ function renderQuadrantChart() {
                   context.raw;
 
                 return (
-                  point.label +
-                  " | Score: " +
-                  point.y +
-                  " | Momentum: " +
-                  point.x
-                );
+
+  point.label +
+
+  " | Score: " +
+
+  point.y.toFixed(1) +
+
+  " | MA Slope (50D): " +
+
+  point.x.toFixed(4)
+
+);
               }
           }
         }
@@ -1632,15 +1755,15 @@ function renderQuadrantChart() {
             display: true,
 
             text:
-              "Momentum Delta",
+              "MA Slope (50D)",
 
             color:
               "#ddd"
           },
 
-          min: -1.5,
+          min: xMin - padding,
 
-          max: 1.5,
+          max: xMax + padding,
 
           grid: {
 
