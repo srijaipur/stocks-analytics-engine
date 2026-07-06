@@ -14,11 +14,6 @@ const OUTPUT_PATH = path.resolve(__dirname, "data/analytics.html");
 
 const SERVE = process.argv.includes("--serve");
 
-
-
-
-
-
 // ======================================================
 // READ EXCEL
 // ======================================================
@@ -1953,25 +1948,45 @@ function renderRSIRegimeChart() {
         color = "#dc2626";
       }
 
+      let regime;
+
+if (rsi > 60) {
+
+  regime = "Strong Momentum";
+
+}
+
+else if (rsi >= 40) {
+
+  regime = "Neutral";
+
+}
+
+else {
+
+  regime = "Weak Momentum";
+
+}
+
       return {
 
                x:
-          index + 1,
+          score,
 
         y:
           rsi,
 
         r:
-          Math.max(
-            5,
-            score / 18
-          ),
+          6,
 
         ticker:
           r.Ticker,
 
         score:
           score,
+
+        regime:
+          regime,
 
         backgroundColor:
           color
@@ -1996,12 +2011,21 @@ function renderRSIRegimeChart() {
 
       datasets: [{
 
-        label:
-          "RSI Universe",
+    label:
+      "RSI Universe",
 
-        data:
-          scatterData
-      }]
+    data:
+      scatterData,
+
+    backgroundColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderWidth: 1.25
+
+}]
     },
 
     options: {
@@ -2026,12 +2050,14 @@ function renderRSIRegimeChart() {
                   context.raw;
 
                 return (
-                  point.ticker +
-                  " | RSI: " +
-                  point.y.toFixed(1) +
-                  " | Score: " +
-                  point.score.toFixed(1)
-                );
+  point.ticker +
+  " | RSI-14: " +
+  point.y.toFixed(1) +
+  " | Composite: " +
+  point.score.toFixed(1) +
+  " | " +
+  point.regime
+);
               }
           }
         }
@@ -2050,11 +2076,14 @@ function renderRSIRegimeChart() {
             display: true,
 
             text:
-              "Universe Members",
+              "Stock's Composite Score",
 
             color:
               "#ddd"
           },
+          min: 0,
+
+          max: 100,
 
           grid: {
 
@@ -2118,7 +2147,7 @@ function renderRSIRegimeChart() {
                 ) {
 
                   return (
-                    "rgba(255,255,255,0.35)"
+                    "rgba(245,158,11,0.70)"
                   );
                 }
 
@@ -2201,5 +2230,3 @@ window.__ANALYTICS__ = ${JSON.stringify(data)};
       });
   }
 })();
-
-

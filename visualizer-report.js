@@ -774,25 +774,25 @@ onAuthStateChanged(auth, async (user) => {
 async function writeReport() {
   const rows = await readScores();
   const html = buildHtml(rows);
-  await fs.promises.writeFile(OUTPUT_PATH, html, 'utf8');
+  await fs.promises.writeFile(OUTPUT_PATH, html, "utf8");
   console.log(`Wrote report: ${OUTPUT_PATH}`);
 }
 
 function serveReport() {
   const server = http.createServer((req, res) => {
-    if (req.url === '/' || req.url === '/report.html') {
-      fs.readFile(OUTPUT_PATH, 'utf8', (err, content) => {
+    if (req.url === "/" || req.url === "/report.html") {
+      fs.readFile(OUTPUT_PATH, "utf8", (err, content) => {
         if (err) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          return res.end('Failed to read report file');
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          return res.end("Failed to read report file");
         }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.writeHead(200, { "Content-Type": "text/html" });
         res.end(content);
       });
       return;
     }
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not found');
+    res.writeHead(404, { "Content-Type": "text/plain" });
+    res.end("Not found");
   });
   server.listen(PORT, () => {
     console.log(`Serving report at http://localhost:${PORT}`);
