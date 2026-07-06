@@ -69,6 +69,7 @@ function buildHtml(rows) {
   .hidden { display: none; }
   .center-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .auth-card, .card { background: #151824; border: 1px solid #2d3344; border-radius: 16px; padding: 24px; max-width: 900px; width: 100%; }
+  .report-wide {  width: 100%; max-width: none;}
   .login-btn, .logout-btn { border: none; border-radius: 10px; padding: 12px 18px; cursor: pointer; background: #2196f3; color: white; font-weight: 700; }
   .login-btn:hover, .logout-btn:hover { background: #64b5f6; }
   header { padding: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
@@ -138,20 +139,20 @@ function buildHtml(rows) {
 <div class="grid">
 
   <!-- Alpha vs RSI Scatter -->
-  <div class="card">
+  <div class="card report-wide">
     <h2>Jensen's Alpha (63D) vs RSI-14</h2>
     <canvas id="scatterChart"></canvas>
   </div>
 
   <!-- MA Slope vs Composite -->
-  <div class="card">
+  <div class="card report-wide">
     <h2>Composite Score vs MA Slope (50D)</h2>
     <canvas id="slopeChart"></canvas>
   </div>
 
 </div>
 
-  <div class="card table-wrap">
+  <div class="card table-wrap report-wide">
     <h2>Full Scores Table</h2>
     <div class="summary-line" id="rowCount"></div>
     <table>

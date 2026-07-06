@@ -151,6 +151,25 @@ canvas {
   padding: 0 2rem 2rem;
 }
 
+.analytics-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  background: #1d2330;
+  color: #ffffff;
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08);
+}
+
+#momentumTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #1d2330;
+}
+
 </style>
 
 </head>
@@ -260,6 +279,7 @@ canvas {
 
     <table
       id="analyticsTable"
+      class="analytics-table"
       style="
         width:100%;
         border-collapse:collapse;
@@ -386,6 +406,7 @@ canvas {
 
       <table
         id="momentumTable"
+         class="analytics-table"
         style="
           width:100%;
           border-collapse:collapse;
@@ -402,25 +423,25 @@ canvas {
             "
           >
 
-            <th style="padding:12px;">
-              Ticker
-            </th>
+            <th id="sortTicker" style="padding:12px;cursor:pointer;">
+  Ticker ↕
+</th>
 
-            <th style="padding:12px;">
-              Delta
-            </th>
+<th id="sortDelta" style="padding:12px;cursor:pointer;">
+  Delta ↕
+</th>
 
-            <th style="padding:12px;">
-              Composite
-            </th>
+<th id="sortComposite" style="padding:12px;cursor:pointer;">
+  Composite ↕
+</th>
 
-            <th style="padding:12px;">
-              RSI
-            </th>
+<th id="sortRSI" style="padding:12px;cursor:pointer;">
+  RSI ↕
+</th>
 
-            <th style="padding:12px;">
-              MA Slope
-            </th>
+<th id="sortMASlope" style="padding:12px;cursor:pointer;">
+  MA Slope ↕
+</th>
 
           </tr>
 
@@ -706,6 +727,8 @@ function bootAuthenticatedApp() {
   renderSignals();
 
   renderRisk();
+
+  renderTrendChart();
 }
 
 // ======================================================
@@ -1037,7 +1060,7 @@ function renderSignals() {
     topN(
       rows,
       r =>
-        (r.RSI || 0) +
+        (r.RSI_14Day || 0) +
         (r.MA_Slope || 0)
     );
 
@@ -1248,20 +1271,19 @@ function renderMomentumLadder() {
   }
 
   const sorted =
-    [...rows].sort(
-      (a, b) => {
+  [...rows].sort((a,b) => {
 
-        return (
-          Number(
-            b.Daily_Composite_Score_delta || 0
-          ) -
+    let av;
+    let bv;
 
-          Number(
-            a.Daily_Composite_Score_delta || 0
-          )
-        );
-      }
-    );
+   
+
+    const result =
+      av > bv ? 1 :
+      av < bv ? -1 : 0;
+
+    
+  });
 
   body.innerHTML =
     sorted
@@ -1380,9 +1402,9 @@ function renderQuadrantChart() {
         );
 
       const slope =
-        Number(
-          r.Daily_Composite_Score_delta || 0
-        );
+  Number(
+    r.MA_Slope_50 || 0
+  );
 
       const rs =
         Number(
@@ -1442,7 +1464,164 @@ function renderQuadrantChart() {
   // VALIDATION LOG
   // ==========================================
 
-  
+  // ==========================================
+// RUNTIME X-AXIS RANGE (MA_Slope_50)
+// ==========================================
+
+const xValues =
+  quadrantData
+    .map(p => p.x)
+    .filter(Number.isFinite);
+
+const xMin =
+  Math.min(...xValues);
+
+const xMax =
+  Math.max(...xValues);
+
+// Prevent zero-width ranges.
+const span =
+  Math.max(
+    xMax - xMin,
+    0.02
+  );
+
+// 15% visual padding.
+const padding =
+  span * 0.15;
+
+  // ==========================================
+// QUADRANT MIDPOINTS
+// ==========================================
+
+const yValues =
+  quadrantData
+    .map(p => p.y)
+    .filter(Number.isFinite);
+
+const xMid =
+  (xMin + xMax) / 2;
+
+const yMin =
+  Math.min(...yValues);
+
+const yMax =
+  Math.max(...yValues);
+
+const yMid =
+  (yMin + yMax) / 2;
+
+  // ==========================================
+// QUADRANT GUIDE PLUGIN
+// ==========================================
+
+const quadrantGuide = {
+
+  id: "quadrantGuide",
+
+  beforeDraw(chart) {
+
+    const {
+
+      ctx,
+
+      scales: {
+
+        x,
+
+        y
+
+      }
+
+    } = chart;
+
+    const xPixel =
+      x.getPixelForValue(xMid);
+
+    const yPixel =
+      y.getPixelForValue(yMid);
+
+    ctx.save();
+
+    ctx.strokeStyle =
+      "rgba(255,191,0,0.90)";
+
+    ctx.lineWidth = 2;
+
+    ctx.setLineDash([8,6]);
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      xPixel,
+      y.top
+    );
+
+    ctx.lineTo(
+      xPixel,
+      y.bottom
+    );
+
+    ctx.moveTo(
+      x.left,
+      yPixel
+    );
+
+    ctx.lineTo(
+      x.right,
+      yPixel
+    );
+
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ------------------------------------
+// Quadrant Labels
+// ------------------------------------
+
+ctx.fillStyle =
+  "rgba(255,191,0,0.95)";
+
+ctx.font =
+  "bold 13px Arial";
+
+ctx.textAlign =
+  "center";
+
+ctx.textBaseline =
+  "middle";
+
+const pad = 18;
+
+ctx.fillText(
+  "Q2",
+  x.left + pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q1",
+  x.right - pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q3",
+  x.left + pad,
+  y.bottom - pad
+);
+
+ctx.fillText(
+  "Q4",
+  x.right - pad,
+  y.bottom - pad
+);
+
+    ctx.restore();
+
+  }
+
+};
 
   // ==========================================
   // CHART
@@ -1463,6 +1642,11 @@ function renderQuadrantChart() {
           quadrantData
       }]
     },
+    plugins: [
+
+  quadrantGuide
+
+],
 
     options: {
 
@@ -1486,12 +1670,18 @@ function renderQuadrantChart() {
                   context.raw;
 
                 return (
-                  point.label +
-                  " | Score: " +
-                  point.y +
-                  " | Momentum: " +
-                  point.x
-                );
+
+  point.label +
+
+  " | Score: " +
+
+  point.y.toFixed(1) +
+
+  " | MA Slope (50D): " +
+
+  point.x.toFixed(4)
+
+);
               }
           }
         }
@@ -1510,15 +1700,15 @@ function renderQuadrantChart() {
             display: true,
 
             text:
-              "Momentum Delta",
+              "MA Slope (50D)",
 
             color:
               "#ddd"
           },
 
-          min: -1.5,
+          min: xMin - padding,
 
-          max: 1.5,
+          max: xMax + padding,
 
           grid: {
 
@@ -1633,7 +1823,7 @@ function renderRSIRegimeChart() {
 
       const rsi =
   Number(
-    r.RSI || 0
+    r.RSI_14Day || 0
   );
 
       const score =
@@ -1663,25 +1853,45 @@ function renderRSIRegimeChart() {
         color = "#dc2626";
       }
 
+      let regime;
+
+if (rsi > 60) {
+
+  regime = "Strong Momentum";
+
+}
+
+else if (rsi >= 40) {
+
+  regime = "Neutral";
+
+}
+
+else {
+
+  regime = "Weak Momentum";
+
+}
+
       return {
 
                x:
-          index + 1,
+          score,
 
         y:
           rsi,
 
         r:
-          Math.max(
-            5,
-            score / 18
-          ),
+          6,
 
         ticker:
           r.Ticker,
 
         score:
           score,
+
+        regime:
+          regime,
 
         backgroundColor:
           color
@@ -1706,12 +1916,21 @@ function renderRSIRegimeChart() {
 
       datasets: [{
 
-        label:
-          "RSI Universe",
+    label:
+      "RSI Universe",
 
-        data:
-          scatterData
-      }]
+    data:
+      scatterData,
+
+    backgroundColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderWidth: 1.25
+
+}]
     },
 
     options: {
@@ -1736,12 +1955,14 @@ function renderRSIRegimeChart() {
                   context.raw;
 
                 return (
-                  point.ticker +
-                  " | RSI: " +
-                  point.y.toFixed(1) +
-                  " | Score: " +
-                  point.score.toFixed(1)
-                );
+  point.ticker +
+  " | RSI-14: " +
+  point.y.toFixed(1) +
+  " | Composite: " +
+  point.score.toFixed(1) +
+  " | " +
+  point.regime
+);
               }
           }
         }
@@ -1760,11 +1981,14 @@ function renderRSIRegimeChart() {
             display: true,
 
             text:
-              "Universe Members",
+              "Stock's Composite Score",
 
             color:
               "#ddd"
           },
+          min: 0,
+
+          max: 100,
 
           grid: {
 
@@ -1828,7 +2052,7 @@ function renderRSIRegimeChart() {
                 ) {
 
                   return (
-                    "rgba(255,255,255,0.35)"
+                    "rgba(245,158,11,0.70)"
                   );
                 }
 

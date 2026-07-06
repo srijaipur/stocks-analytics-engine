@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js && node visualizer.js",
+    "start": "node index.js && node visualizer-report.js && node visualizer-analytics.js && node server/serveReport.js",
     "analytics": "node visualizer-analytics.js",
     "report": "node visualizer-report.js",
     "analytics:serve": "node visualizer-analytics.js --serve",
