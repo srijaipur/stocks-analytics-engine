@@ -153,6 +153,12 @@ function buildHtml(rows) {
 </div>
 
   <div class="card table-wrap report-wide">
+  <div class="search-wrap">
+  <input
+    type="search"
+    id="tableFilterInput"
+    placeholder="Filter table by ticker…" />
+</div>
     <h2>Full Scores Table</h2>
     <div class="summary-line" id="rowCount"></div>
     <table>
@@ -180,6 +186,7 @@ const tableHead = document.getElementById("tableHead");
 const tableBody = document.getElementById("tableBody");
 const rowCount = document.getElementById("rowCount");
 const logoutBtn = document.getElementById("logoutBtn");
+const tableFilterInput = document.getElementById("tableFilterInput");
 
 // ===============================
 // SENTINEL SCHEMA ADAPTER (SOURCE OF TRUTH)
@@ -329,6 +336,19 @@ if (slope) slope.destroy();
     await signOut(auth);
     window.location.reload();
   };
+  tableFilterInput.addEventListener("input", () => {
+
+  const query = tableFilterInput.value.trim().toLowerCase();
+
+  const filtered = rows.filter(item =>
+    String(item.Ticker || "")
+      .toLowerCase()
+      .includes(query)
+  );
+
+  renderTable(filtered);
+
+});
   filterInput.addEventListener('input', () => {
     const query = filterInput.value.trim().toLowerCase();
     const filtered = rows.filter((item) => {
