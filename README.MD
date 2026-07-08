@@ -215,6 +215,37 @@ This runs `node index.js && node visualizer.js` per `package.json` scripts. The 
 - Write `ScoresCurrent`, a `SignalsTriggered` sheet, and snapshot `ScoresPreviousDay` in `data/stocks.xlsx`.
 - Generate `data/report.html` for visualization.
 
+## Safe Cutover Procedure
+
+Before merging `feature/stabalizeVisualization` into `main`, create a safe recovery checkpoint so you can restore the previous state if anything breaks.
+
+1. Ensure `main` is clean and up to date:
+```bash
+git checkout main
+git pull origin main
+git status --short
+```
+
+2. Create a checkpoint branch and/or tag:
+```bash
+git branch checkpoint/main-before-stabalizeVisualization
+git tag -a main-before-stabalizeVisualization -m "Checkpoint before merging feature/stabalizeVisualization"
+```
+
+3. If the merge or deployment breaks, recover from the checkpoint:
+```bash
+git checkout main
+git merge --abort            # if merge is in progress
+git reset --hard checkpoint/main-before-stabalizeVisualization
+```
+
+4. Optionally restore individual files from the checkpoint:
+```bash
+git restore --source=checkpoint/main-before-stabalizeVisualization -- .
+```
+
+This gives you a safe fallback before applying the new visualization feature.
+
 ### Manage the Excel workbook
 
 Create or update workbook headers and sheets:
