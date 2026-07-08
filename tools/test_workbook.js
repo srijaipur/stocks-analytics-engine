@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
 
 const workbook = new ExcelJS.Workbook();
 await workbook.xlsx.readFile(WORKBOOK_PATH);
