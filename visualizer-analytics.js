@@ -499,26 +499,35 @@ canvas {
       "
     >
 
-      <table
-        id="momentumTable"
-         class="analytics-table"
+      <div
         style="
-          width:100%;
-          border-collapse:collapse;
-          min-width:900px;
+          max-height:350px;
+          overflow-y:auto;
+          border:1px solid #333;
+          border-radius:6px;
         "
       >
 
-        <thead>
+        <table
+          id="momentumTable"
+          class="analytics-table"
+          style="
+            width:100%;
+            border-collapse:collapse;
+            min-width:900px;
+          "
+        >
 
-          <tr
-            style="
-              background:#1d2330;
-              text-align:left;
-            "
-          >
+          <thead>
 
-            <th id="sortTicker" style="padding:12px;cursor:pointer;">
+            <tr
+              style="
+                background:#1d2330;
+                text-align:left;
+              "
+            >
+
+              <th id="sortTicker" style="padding:12px;cursor:pointer;">
   Ticker ↕
 </th>
 
@@ -538,16 +547,18 @@ canvas {
   MA Slope ↕
 </th>
 
-          </tr>
+            </tr>
 
-        </thead>
+          </thead>
 
-        <tbody
-          id="momentumTableBody"
-        >
-        </tbody>
+          <tbody
+            id="momentumTableBody"
+          >
+          </tbody>
 
-      </table>
+        </table>
+
+      </div>
 
     </div>
 
