@@ -51,11 +51,11 @@ async function readData() {
 
       Beta: vals[6],
 
-      RSI: vals[7],
+      RSI_14Day: vals[7],
 
       SMA200_Dist: vals[8],
 
-      MA_Slope: vals[9],
+      MA_Slope_50: vals[9],
 
       Volume_Expansion: vals[10],
 
@@ -492,7 +492,7 @@ canvas {
     >
       Momentum Delta Ladder
     </h2>
-
+    
     <div
       style="
         overflow-x:auto;
@@ -1156,7 +1156,7 @@ function renderSignals() {
       rows,
       r =>
         (r.RSI_14Day || 0) +
-        (r.MA_Slope || 0)
+        (r.MA_Slope_50 || 0)
     );
 
   const risk =
@@ -1366,28 +1366,26 @@ function renderMomentumLadder() {
   }
 
   const sorted =
-  [...rows].sort((a,b) => {
+    [...rows].sort((a, b) => {
+      const av = Number(a.Daily_Composite_Score_delta ?? 0);
+      const bv = Number(b.Daily_Composite_Score_delta ?? 0);
 
-    let av;
-    let bv;
+      return bv - av;
+    });
 
-   
-
-    const result =
-      av > bv ? 1 :
-      av < bv ? -1 : 0;
-
-    
-  });
-
+  
+  
   body.innerHTML =
     sorted
       .map((r) => {
 
+        const deltaRaw =
+          r.Daily_Composite_Score_delta;
+
         const delta =
-          Number(
-            r.Daily_Composite_Score_delta || 0
-          ).toFixed(2);
+          deltaRaw == null
+            ? "—"
+            : Number(deltaRaw).toFixed(2);
 
         const score =
           Number(
@@ -1407,11 +1405,11 @@ function renderMomentumLadder() {
         let deltaColor =
           "#888";
 
-        if (Number(delta) > 0) {
+        if (deltaRaw != null && Number(deltaRaw) > 0) {
           deltaColor = "#16a34a";
         }
 
-        if (Number(delta) < 0) {
+        if (deltaRaw != null && Number(deltaRaw) < 0) {
           deltaColor = "#dc2626";
         }
 
