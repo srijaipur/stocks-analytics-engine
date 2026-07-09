@@ -49,7 +49,9 @@ function ensureSheet(name, headerRow) {
 function writeTickers(sheet, tickers) {
   const lastRow = sheet.lastRow?.number || 1;
   if (lastRow > 1) sheet.spliceRows(2, lastRow - 1);
-  tickers.forEach((t, i) => { sheet.getRow(i + 2).values = [t]; });
+  tickers.forEach((t, i) => {
+    sheet.getRow(i + 2).values = [t];
+  });
 }
 
 // --- Portfolio sheet ---

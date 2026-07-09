@@ -4,682 +4,2238 @@ import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 
+import { firebaseConfig } from "./firebase/firebaseConfig.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+
 const OUTPUT_PATH = path.resolve(__dirname, "data/analytics.html");
+
 const SERVE = process.argv.includes("--serve");
 
-// ---------- READ ----------
+// ======================================================
+// READ EXCEL
+// ======================================================
+
 async function readData() {
   const wb = new ExcelJS.Workbook();
+
   await wb.xlsx.readFile(WORKBOOK_PATH);
 
   const rows = [];
-  const headers = [];
 
   const sheet = wb.getWorksheet("ScoresCurrent");
 
+  if (!sheet) {
+    throw new Error("ScoresCurrent worksheet missing");
+  }
+
   sheet.eachRow((row, i) => {
+    if (i === 1) return;
+
     const vals = row.values.slice(1);
-    if (i === 1) headers.push(...vals);
-    else {
-    
-      const obj = {
-  Ticker: vals[0],
-  EPS_TTM: vals[1],
-  EPS_Percentile: vals[2],
-  EPS_Growth: vals[3],
-  Inst_Accumulation: vals[4],
-  Alpha_63D: vals[5],
-  Beta: vals[6],
-  RSI: vals[7],
-  SMA200_Dist: vals[8],
-  MA_Slope: vals[9],
-  Volume_Expansion: vals[10],
-  Net_Inst: vals[11],
-  RS_vs_SP100: vals[12],
-  Return_63D: vals[13],
-  RS_Rank: vals[14],
-  Drawdown_pct: vals[15],
-  Old_Score: vals[16],
-  New_Score: vals[17],
-  Earnings_Date: vals[18],
-  Delta: vals[19],
-};
-      if (obj.Ticker) rows.push(obj);
+
+    const obj = {
+      Ticker: vals[0],
+
+      EPS_TTM: vals[1],
+
+      EPS_Percentile: vals[2],
+
+      EPS_Growth: vals[3],
+
+      Inst_Accumulation: vals[4],
+
+      Alpha_63D: vals[5],
+
+      Beta: vals[6],
+
+      RSI_14Day: vals[7],
+
+      SMA200_Dist: vals[8],
+
+      MA_Slope_50: vals[9],
+
+      Volume_Expansion: vals[10],
+
+      Net_Inst: vals[11],
+
+      RS_vs_SP100: vals[12],
+
+      Return_63D: vals[13],
+
+      RS_Rank: vals[14],
+
+      Drawdown_pct: vals[15],
+
+      Composite_Score: vals[16],
+
+      New_Composite_Score: vals[17],
+
+      Earnings_Date: vals[18],
+
+      Daily_Composite_Score_delta: vals[19],
+    };
+
+    if (obj.Ticker) {
+      rows.push(obj);
     }
   });
 
-  // Signals
-  const signalsSheet = wb.getWorksheet("SignalsTriggered");
-  const signals = [];
-
-  if (signalsSheet) {
-    signalsSheet.eachRow((row, i) => {
-      if (i === 1) return;
-      signals.push({
-        ticker: row.getCell(1).value,
-        score: row.getCell(2).value,
-        triggers: row.getCell(3).value,
-      });
-    });
-  }
-
-  const pf = new Set();
-  const wl = new Set();
-
-  const ps = wb.getWorksheet("Portfolio");
-  const ws = wb.getWorksheet("Watchlist");
-
-  if (ps) ps.eachRow((r, i) => { if (i > 1) pf.add(r.getCell(1).value); });
-  if (ws) ws.eachRow((r, i) => { if (i > 1) wl.add(r.getCell(1).value); });
-
-  return { rows, pf:[...pf], wl:[...wl], signals };
+  return { rows };
 }
 
-// ---------- UI ----------
-function buildHtml(data) {
-const safe = JSON.stringify(data).replace(/</g, "\\u003c");
+// ======================================================
+// BUILD HTML
+// ======================================================
 
-return `
-<!DOCTYPE html>
+function buildHtml(data) {
+  const safe = JSON.stringify(data).replace(/</g, "\\u003c");
+
+  return `<!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 
-<!-- ✅ FIXED CHART LOAD -->
+<title>Stocks Analytics</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
 
 <style>
-body { background:#0f1117; color:#ddd; font-family:sans-serif }
 
-.tabs { display:flex; gap:10px; padding:10px }
-.tab { background:#1a1d27; padding:8px; cursor:pointer }
-.active { background:#333 }
+body {
+  margin:0;
+  background:#0f1117;
+  color:#ddd;
+  font-family:sans-serif;
+}
+
+header {
+  padding:16px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tabs {
+  display:flex;
+  gap:12px;
+  padding:12px 24px;
+  border-bottom:1px solid #222;
+}
+
+.tab-btn {
+  background:#1d2330;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.page {
+  display:none;
+  padding:24px;
+}
+
+.page.active {
+  display:block;
+}
 
 .grid {
- display:grid;
- grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
- gap:10px;
- padding:10px;
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(280px,1fr));
+  gap:16px;
 }
 
 .card {
- background:#1a1d27;
- border-radius:10px;
- padding:10px;
- text-align:center;
+  background:#1a1d27;
+  border-radius:12px;
+  padding:16px;
 }
 
-.score { font-size:1.4rem }
+.metric {
+  margin-top:8px;
+}
 
-.green { border:1px solid #00e676 }
-.yellow { border:1px solid #ffd600 }
-.red { border:1px solid #f44336 }
+.center-screen {
+  height:80vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:16px;
+}
 
-.text-green { color:#00e676 }
-.text-blue { color:#00bcd4 }
-.text-yellow { color:#ffd600 }
-.text-red { color:#f44336 }
+.hidden {
+  display:none;
+}
 
-.small { font-size:0.8rem; color:#aaa }
+canvas {
+  background:#161922;
+  border-radius:12px;
+  padding:16px;
+}
 
-.hidden { display:none }
+.login-btn {
+  background:#2563eb;
+  color:white;
+  border:none;
+  border-radius:8px;
+  padding:12px 18px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+.error-box {
+  background:#3b1111;
+  border:1px solid #7f1d1d;
+  padding:16px;
+  border-radius:10px;
+  margin:20px;
+}
+
+.green {
+  border-left:4px solid #16a34a;
+}
+
+.yellow {
+  border-left:4px solid #ca8a04;
+}
+
+.red {
+  border-left:4px solid #dc2626;
+}
+
+
+  .report-link {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #ffffffaa; 
+  background: #0d1a2e;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+}
+
+.report-link:hover {
+  background: #13233d;
+  border-color: #ffffff;
+  /* Glow intensifies on hover for an authentic neon effect */
+  box-shadow: 
+    0 0 6px #ffffff, 
+    0 0 16px #ffffff, 
+    0 0 26px #64b5f6, 
+    0 0 40px #2196f3;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  padding: 0 2rem 2rem;
+}
+
+.analytics-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  background: #1d2330;
+  color: #ffffff;
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08);
+}
+
+#momentumTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #1d2330;
+}
+
 </style>
 
 </head>
 
 <body>
 
-<h2 style="padding-left:10px">📊 Full Dashboard</h2>
+<div id="auth"></div>
+
+<div id="app" class="hidden">
+
+<header>
+  <h1>
+    📊 Stocks Analytics Dashboard
+  </h1>
+  
+   <a class="report-link" href="report-loader.html">
+  ← General Stock Universe Report 
+</a>
+
+</header>
 
 <div class="tabs">
- <div class="tab active" onclick="show('analytics',this)">Analytics</div>
- <div class="tab" onclick="show('signals',this)">Signals</div>
- <div class="tab" onclick="show('trends',this)">Trends</div>
- <div class="tab" onclick="show('risk',this)">Risk</div>
-</div>
 
-<!-- ✅ ANALYTICS -->
-<div id="analytics">
-<h3>📊 Portfolio Structural Strength</h3>
-<div id="pf" class="grid"></div>
+  <button
+    class="tab-btn"
+    data-tab="overview"
+  >
+    Overview
+  </button>
 
-<h3>👀 Watchlist Structural Strength</h3>
-<div id="wl" class="grid"></div>
-</div>
+  <button
+  class="tab-btn"
+  data-tab="signals"
+>
+  Signals
+</button>
 
-<!-- ✅ SIGNALS -->
-<div id="signals" class="hidden">
-<div id="signalsGrid" class="grid"></div>
-</div>
+  <button
+    class="tab-btn"
+    data-tab="risk"
+  >
+    Risk
+  </button>
 
-<!-- ✅ TRENDS -->
-<div id="trends" class="hidden">
-
-<h3>🚀 Leaders</h3>
-<div id="leaders" class="grid"></div>
-
-<h3>⚡ Improving</h3>
-<div id="improving" class="grid"></div>
-
-<h3>⚠ Weakening</h3>
-<div id="weakening" class="grid"></div>
-
-<h3>❌ Laggards</h3>
-<div id="laggards" class="grid"></div>
-
-<canvas id="chart"></canvas>
+  <button
+    class="tab-btn"
+    data-tab="trends"
+  >
+    Trends
+  </button>
 
 </div>
 
-<!-- ✅ RISK TAB -->
-<div id="risk" class="hidden">
 
-<h3>🛡️ Portfolio Health</h3>
-<div id="riskSummary" class="small" style="padding:10px;"></div>
+<div
+  id="overview"
+  class="page active"
+>
 
-<h4>⚠️ Risk Alerts</h4>
-<div id="riskList" class="grid"></div>
+  <!-- ===================================== -->
+  <!-- LEADERSHIP STRIP -->
+  <!-- ===================================== -->
+
+ 
+
+  <div style=" display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:16px; flex-wrap:wrap; " > <h2 style=" margin:0; font-size:20px; " > Leadership </h2> <button id="toggleLeadersBtn" class="tab-btn" > Show All Leaders </button> </div> <div class="grid" id="overviewGrid" ></div>
+
+  <!-- ===================================== -->
+  <!-- SEARCH -->
+  <!-- ===================================== -->
+
+  <div
+    style="
+      margin-top:24px;
+      margin-bottom:16px;
+    "
+  >
+
+    <input
+      id="tickerSearch"
+      type="text"
+      placeholder="Search ticker..."
+      style="
+        width:100%;
+        max-width:320px;
+        padding:12px;
+        border-radius:8px;
+        border:none;
+        background:#1a1d27;
+        color:#ddd;
+        font-size:14px;
+      "
+    />
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- ANALYTICS TABLE -->
+  <!-- ===================================== -->
+
+  <div
+    style="
+      overflow-x:auto;
+      border-radius:12px;
+    "
+  >
+
+    <table
+      id="analyticsTable"
+      class="analytics-table"
+      style="
+        width:100%;
+        border-collapse:collapse;
+        min-width:900px;
+        background:#161922;
+      "
+    >
+
+      <thead>
+
+        <tr
+          style="
+            background:#1d2330;
+            text-align:left;
+          "
+        >
+
+          <th style="padding:12px;">Ticker</th>
+          <th style="padding:12px;">Score</th>
+          <th style="padding:12px;">RS Rank</th>
+          <th style="padding:12px;">RSI</th>
+          <th style="padding:12px;">MA Slope</th>
+          <th style="padding:12px;">Drawdown</th>
+          <th style="padding:12px;">Beta</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody id="analyticsTableBody">
+      </tbody>
+
+    </table>
+
+  </div>
 
 </div>
 
-<script>
 
-const data = ${safe};
+<div
+  id="signals"
+  class="page"
+>
+
+  <div
+    class="card"
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:12px;
+      "
+    >
+      Institutional Signals
+    </h2>
+
+    <div
+      style="
+        color:#bbb;
+        font-size:14px;
+        line-height:1.7;
+      "
+    >
+      Signals intelligence layer
+      initializing...
+    </div>
+
+    <div
+      id="signalsGrid"
+      class="grid"
+      style="
+        margin-top:18px;
+      "
+    >
+    </div>
+
+  </div>
+
+</div>
+
+<div
+  id="risk"
+  class="page"
+>
+
+  <div
+    class="grid"
+    id="riskGrid"
+  ></div>
+
+</div>
+
+<div
+  id="trends"
+  class="page"
+>
+
+  <!-- ===================================== -->
+  <!-- MOMENTUM DELTA LADDER -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+    style="
+      margin-bottom:24px;
+    "
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:16px;
+      "
+    >
+      Momentum Delta Ladder
+    </h2>
+    
+    <div
+      style="
+        overflow-x:auto;
+      "
+    >
+
+      <div
+        style="
+          max-height:350px;
+          overflow-y:auto;
+          border:1px solid #333;
+          border-radius:6px;
+        "
+      >
+
+        <table
+          id="momentumTable"
+          class="analytics-table"
+          style="
+            width:100%;
+            border-collapse:collapse;
+            min-width:900px;
+          "
+        >
+
+          <thead>
+
+            <tr
+              style="
+                background:#1d2330;
+                text-align:left;
+              "
+            >
+
+              <th id="sortTicker" style="padding:12px;cursor:pointer;">
+  Ticker ↕
+</th>
+
+<th id="sortDelta" style="padding:12px;cursor:pointer;">
+  Delta ↕
+</th>
+
+<th id="sortComposite" style="padding:12px;cursor:pointer;">
+  Composite ↕
+</th>
+
+<th id="sortRSI" style="padding:12px;cursor:pointer;">
+  RSI ↕
+</th>
+
+<th id="sortMASlope" style="padding:12px;cursor:pointer;">
+  MA Slope ↕
+</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody
+            id="momentumTableBody"
+          >
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- LEADERSHIP MOMENTUM QUADRANTS -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+    style="
+      margin-bottom:24px;
+    "
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:10px;
+      "
+    >
+      Leadership Momentum Quadrants
+    </h2>
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            auto-fit,
+            minmax(180px,1fr)
+          );
+        gap:8px;
+        margin-bottom:18px;
+        font-size:13px;
+        color:#bbb;
+      "
+    >
+
+      <div>
+        🟢 <strong>Q1 High Score + Positive Momentum</strong><br>
+        Leadership
+      </div>
+
+      <div>
+        🟡 <strong>Q4 Low Score + Positive Momentum</strong><br>
+        Emerging Strength
+      </div>
+
+      <div>
+        🟠 <strong>Q2 High Score + Negative Momentum</strong><br>
+        Exhaustion
+      </div>
+
+      <div>
+        🔴 <strong>Q3 Low Score + Negative Momentum</strong><br>
+        Weakness
+      </div>
+
+    </div>
+
+    <canvas
+      id="quadrantChart"
+    ></canvas>
+
+  </div>
+
+  <!-- ===================================== -->
+  <!-- RSI MARKET REGIME MAP -->
+  <!-- ===================================== -->
+
+  <div
+    class="card"
+  >
+
+    <h2
+      style="
+        margin-top:0;
+        margin-bottom:10px;
+      "
+    >
+      RSI Market Regime Map
+    </h2>
+
+    <div
+      style="
+        margin-bottom:16px;
+        font-size:13px;
+        color:#bbb;
+        line-height:1.6;
+      "
+    >
+      Each point represents one ticker
+      in the current analytics universe.
+      RSI regimes are color-coded for
+      breadth and participation analysis.
+    </div>
+
+    <div
+      style="
+        display:flex;
+        gap:18px;
+        flex-wrap:wrap;
+        margin-bottom:14px;
+        font-size:13px;
+        color:#bbb;
+      "
+    >
+
+      <div>
+        🟢 Strong RSI &gt; 60
+      </div>
+
+      <div>
+        🟡 Neutral RSI 40–60
+      </div>
+
+      <div>
+        🔴 Weak RSI &lt; 40
+      </div>
+
+    </div>
+
+    <canvas
+      id="rsiRegimeChart"
+      height="130"
+    ></canvas>
+
+  </div>
+
+</div>
+
+<script src="/api/analytics-data.js"></script>
+
+<script type="module">
+
+// ======================================================
+// FIREBASE IMPORTS
+// ======================================================
+
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  getDoc
+} from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+
+// ======================================================
+// FIREBASE INIT
+// ======================================================
+
+const app = initializeApp(
+  ${JSON.stringify(firebaseConfig)}
+);
+
+const auth = getAuth(app);
+
+const db = getFirestore(app);
+
+const provider =
+  new GoogleAuthProvider();
+
+// ======================================================
+// ANALYTICS DATA
+// ======================================================
+
+// Data is injected securely at runtime
+// from /api/analytics-data.js
+
+const data =
+  window.__ANALYTICS__ || { rows: [] };
+
 const rows = data.rows;
-// ---------- SCHEMA NORMALIZATION ----------
-rows.forEach(function(r){
 
-  // numeric normalization
-  r.New_Score = Number(r.New_Score ?? r.Composite_Score ?? 0);
+//const rows = data.rows || [];
 
-  r.Delta = Number(
-    r.Delta ??
-    r.Daily_Composite_Score_delta ??
-    0
+// ======================================================
+// DOM REFERENCES
+// ======================================================
+
+const authEl =
+  document.getElementById("auth");
+
+const appEl =
+  document.getElementById("app");
+
+  // ====================================================== 
+  // // LEADERSHIP STATE
+  // 
+   // ====================================================== 
+   let showAllLeaders = false;
+
+   
+const toggleLeadersBtn =
+  document.getElementById(
+    "toggleLeadersBtn"
   );
 
-  r.MA_Slope = Number(
-    r.MA_Slope ??
-    r.MA_Slope_50 ??
-    0
+
+
+
+  // ======================================================
+// AUTH UI HELPERS
+// ======================================================
+
+function renderLoginScreen() {
+
+   authEl.innerHTML =
+    '<div class="center-screen">' +
+    '<h2>🔒 Login Required</h2>' +
+    '<button id="loginBtn" class="login-btn">' +
+    'Sign in with Google' +
+    '</button>' +
+    '</div>';
+
+  document
+    .getElementById(
+      "loginBtn"
+    )
+    .onclick = () => {
+
+      signInWithPopup(
+        auth,
+        provider
+      );
+    };
+}
+
+function renderAccessDenied(email) {
+
+  authEl.innerHTML =
+    '<div class="error-box">' +
+    '<h2>⛔ Access Denied</h2>' +
+    '<div>' +
+    email +
+    '</div>' +
+    '</div>';
+}
+
+function renderAuthError(err) {
+
+  authEl.innerHTML =
+    '<div class="error-box">' +
+    '<h2>❌ Authentication Error</h2>' +
+    '<pre>' +
+    err.message +
+    '</pre>' +
+    '</div>';
+}
+
+function bootAuthenticatedApp() {
+
+  authEl.innerHTML = "";
+
+  appEl.classList.remove(
+    "hidden"
   );
 
-  r.Drawdown_pct = Number(
-    r["Drawdown_%"] ??
-    r.Drawdown_pct ??
-    0
+  renderOverview();
+
+  renderSignals();
+
+  renderRisk();
+
+  renderTrendChart();
+}
+
+// ======================================================
+// TAB SYSTEM
+// ======================================================
+
+document
+ .querySelectorAll("[data-tab]")
+  .forEach((btn) => {
+
+    btn.onclick = () => {
+
+      const tab =
+        btn.dataset.tab;
+
+      document
+        .querySelectorAll(".page")
+        .forEach((p) => {
+          p.classList.remove(
+            "active"
+          );
+        });
+
+      document
+        .getElementById(tab)
+        .classList.add("active");
+
+      if (tab === "trends") { renderTrendChart(); }
+    };
+  });
+
+// ======================================================
+// AUTH FLOW
+// ======================================================
+
+onAuthStateChanged(
+  auth,
+  async (user) => {
+
+    if (!user) {
+
+    renderLoginScreen();
+
+      authEl.innerHTML =
+        '<div class="center-screen">' +
+        '<h2>🔒 Login Required</h2>' +
+        '<button id="loginBtn" class="login-btn">' +
+        'Sign in with Google' +
+        '</button>' +
+        '</div>';
+
+      document
+        .getElementById(
+          "loginBtn"
+        )
+        .onclick = () => {
+          signInWithPopup(
+            auth,
+            provider
+          );
+        };
+
+      return;
+    }
+
+    try {
+
+      const email =
+        user.email;
+
+      const whitelistRef =
+        doc(
+          db,
+          "whitelist",
+          email
+        );
+
+      const whitelistSnap =
+        await getDoc(
+          whitelistRef
+        );
+
+      if (
+        !whitelistSnap.exists()
+      ) {
+
+      renderAccessDenied(email);
+
+        authEl.innerHTML =
+          '<div class="error-box">' +
+          '<h2>⛔ Access Denied</h2>' +
+          '<div>' +
+          email +
+          '</div>' +
+          '</div>';
+
+        return;
+      }
+
+      authEl.innerHTML = "";
+
+      appEl.classList.remove(
+        "hidden"
+      );
+
+      renderOverview();
+
+      renderRisk();
+
+      bootAuthenticatedApp();
+
+      
+toggleLeadersBtn.onclick =
+  () => {
+
+    showAllLeaders =
+      !showAllLeaders;
+
+    renderOverview();
+  };
+
+
+
+    } catch (err) {
+
+    renderAuthError(err);
+
+      console.error(err);
+
+      authEl.innerHTML =
+        '<div class="error-box">' +
+        '<h2>❌ Authentication Error</h2>' +
+        '<pre>' +
+        err.message +
+        '</pre>' +
+        '</div>';
+    }
+  }
+);
+
+// ======================================================
+// OVERVIEW
+// ======================================================
+
+function scoreColor(score) {
+
+  if (score >= 80) {
+    return "green";
+  }
+
+  if (score >= 40) {
+    return "yellow";
+  }
+
+  return "red";
+}
+
+
+function renderOverview() {
+
+  // ==========================================
+  // LEADERSHIP STRIP
+  // ==========================================
+
+  const target =
+    document.getElementById(
+      "overviewGrid"
+    );
+
+  target.innerHTML = rows
+    .slice( 0, showAllLeaders ? rows.length : 10 )
+    .map((r) => {
+
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        ).toFixed(1);
+
+      const rs =
+        Number(
+          r.RS_Rank || 0
+        ).toFixed(1);
+
+      const eps =
+        Number(
+          r.EPS_TTM || 0
+        ).toFixed(2);
+
+      const inst =
+        Number(
+          r.Inst_Accumulation || 0
+        ).toFixed(2);
+
+      return (
+
+        '<div class="card ' +
+
+        scoreColor(
+          r.New_Composite_Score
+        ) +
+
+        '">' +
+
+        '<h2>' +
+        r.Ticker +
+        '</h2>' +
+
+        '<div class="metric">' +
+        '<strong>Composite Score:</strong> ' +
+        score +
+        '</div>' +
+
+        '<div class="metric">' +
+        '<strong>RS Rank:</strong> ' +
+        rs +
+        '</div>' +
+
+        '<div class="metric">' +
+        '<strong>EPS:</strong> ' +
+        eps +
+        '</div>' +
+
+        '<div class="metric">' +
+        '<strong>Institutional Accumulation:</strong> ' +
+        inst +
+        '</div>' +
+
+        '</div>'
+      );
+
+    })
+    .join("");
+
+  // ==========================================
+  // ANALYTICS TABLE
+  // ==========================================
+
+  toggleLeadersBtn.innerText = showAllLeaders ? "Collapse Leaders" : "Show All Leaders";
+
+  renderAnalyticsTable(rows);
+}
+
+// ======================================================
+// SIGNALS
+// ======================================================
+
+function renderSignals() {
+
+
+  const rows =
+    (window.__ANALYTICS__ &&
+     window.__ANALYTICS__.rows) || [];
+
+  if (!Array.isArray(rows)) return;
+
+  const grid =
+    document.getElementById("signalsGrid");
+
+  if (!grid) return;
+  
+
+  // ============================
+  // HELPERS
+  // ============================
+
+  function topN(
+    arr,
+    fn,
+    n = 3
+  ) {
+
+    return [...arr]
+      .sort(
+        (a, b) =>
+          fn(b) - fn(a)
+      )
+      .slice(0, n);
+  }
+
+  function card(title, items, color) {
+
+  return (
+    '<div class="card">' +
+
+    '<h3 style="color:' + color + '">' +
+    title +
+    '</h3>' +
+
+    '<div style="margin-top:10px">' +
+
+    items.map(i =>
+      '<div style="margin:6px 0">' +
+        '<b>' + i.Ticker + '</b>' +
+        '<span style="color:#aaa">' +
+          ' (' + i.New_Composite_Score + ')' +
+        '</span>' +
+      '</div>'
+    ).join("") +
+
+    '</div>' +
+
+    '</div>'
+  );
+}
+  
+  
+
+  // ============================
+  // SIGNAL LOGIC (PHASE 1)
+  // ============================
+
+  const leadership =
+    topN(
+      rows,
+      r =>
+        (r.New_Composite_Score || 0) +
+        (r.Daily_Composite_Score_delta || 0)
+    );
+
+  const accumulation =
+    topN(
+      rows,
+      r =>
+        (r.Inst_Accumulation || 0) +
+        (r.Net_Inst || 0)
+    );
+
+  const momentum =
+    topN(
+      rows,
+      r =>
+        (r.RSI_14Day || 0) +
+        (r.MA_Slope_50 || 0)
+    );
+
+  const risk =
+    topN(
+      rows,
+      r =>
+        (r.Drawdown_pct || 0) -
+        (r.New_Composite_Score || 0)
+    );
+
+  // ============================
+  // RENDER
+  // ============================
+
+  grid.innerHTML =
+
+    card(
+      "Leadership Expansion",
+      leadership,
+      "#4caf50"
+    ) +
+
+    card(
+      "Institutional Accumulation",
+      accumulation,
+      "#2196f3"
+    ) +
+
+    card(
+      "Momentum Continuation",
+      momentum,
+      "#ff9800"
+    ) +
+
+    card(
+      "Risk Deterioration",
+      risk,
+      "#f44336"
+    );
+}
+
+// ======================================================
+// RISK
+// ======================================================
+function renderAnalyticsTable(
+  dataRows
+) {
+
+  // ==========================================
+  // SEARCH INPUT
+  // ==========================================
+
+  const searchInput =
+    document.getElementById(
+      "tickerSearch"
+    );
+
+  // ==========================================
+  // TABLE INITIAL RENDER
+  // ==========================================
+
+  renderAnalyticsTableRows(
+    dataRows
   );
 
-});
-const pf = new Set(data.pf);
-const wl = new Set(data.wl);
-const signals = data.signals;
+  // ==========================================
+  // LIVE SEARCH
+  // ==========================================
 
-// ---------- HELPERS ----------
-function tier(score){
- if(score >= 80) return "High Strength";
- if(score >= 60) return "Constructive";
- if(score >= 40) return "Mixed";
- return "Weak Structure";
+  searchInput.oninput = () => {
+
+    const term =
+      searchInput.value
+        .toLowerCase();
+
+    const filtered =
+      rows.filter((r) => {
+
+        return (
+          r.Ticker
+            .toLowerCase()
+            .includes(term)
+        );
+      });
+
+    renderAnalyticsTableRows(
+      filtered
+    );
+  };
 }
 
-function color(score){
- if(score>=80) return "green";
- if(score>=40) return "yellow";
- return "red";
+function renderAnalyticsTableRows(
+  dataRows
+) {
+
+  const body =
+    document.getElementById(
+      "analyticsTableBody"
+    );
+
+  body.innerHTML =
+    dataRows
+      .map((r) => {
+
+        const score =
+          Number(
+            r.New_Composite_Score || 0
+          ).toFixed(1);
+
+        const rs =
+          Number(
+            r.RS_Rank || 0
+          ).toFixed(1);
+
+        const rsi =
+          Number(
+            r.RSI_14Day || 0
+          ).toFixed(1);
+
+        const slope =
+          Number(
+            r.MA_Slope_50 || 0
+          ).toFixed(2);
+
+        const drawdown =
+          Number(
+            r.Drawdown_pct || 0
+          ).toFixed(1);
+
+        const beta =
+          Number(
+            r.Beta || 0
+          ).toFixed(2);
+
+       return ( '<tr>' + '<td style="padding:12px;">' + r.Ticker + '</td>' + '<td style="padding:12px;">' + score + '</td>' + '<td style="padding:12px;">' + rs + '</td>' + '<td style="padding:12px;">' + rsi + '</td>' + '<td style="padding:12px;">' + slope + '</td>' + '<td style="padding:12px;">' + drawdown + '</td>' + '<td style="padding:12px;">' + beta + '</td>' + '</tr>' );
+      })
+      .join("");
 }
 
-function delta(v){
- if(v == null) return "—";
- return v>=0 ? "▲ +" + v.toFixed(1) : "▼ " + v.toFixed(1);
+function renderRisk() {
+
+  const risky = rows.filter(
+    (r) => {
+
+      return (
+        r.Drawdown_pct > 25
+      );
+    }
+  );
+
+  document
+    .getElementById(
+      "riskGrid"
+    )
+    .innerHTML = risky
+      .map((r) => {
+
+        return (
+          '<div class="card red">' +
+
+          '<h3>⚠️ ' +
+          r.Ticker +
+          '</h3>' +
+
+          '<div>' +
+          'Drawdown: ' +
+          r.Drawdown_pct +
+          '</div>' +
+
+          '</div>'
+        );
+
+      })
+      .join("");
 }
 
-// ---------- ANALYTICS ----------
-function card(r){
+// ======================================================
+// TREND CHART
+// ======================================================
 
-  const score = Number(r.New_Score);
-  const safeScore = isNaN(score) ? 0 : score;
+// ======================================================
+// TRENDS
+// ======================================================
 
-  const deltaVal = Number(r.Delta);
-  const safeDelta = isNaN(deltaVal) ? null : deltaVal;
+function renderTrendChart() {
 
-  return "<div class='card "+color(safeScore)+"'>" +
-    "<b>"+r.Ticker+"</b><br>" +
-    "<div class='score'>"+safeScore.toFixed(1)+"</div>" +
-    delta(safeDelta)+"<br>" +
-    "<span class='small'>"+tier(safeScore)+"</span>" +
-  "</div>";
+  renderMomentumLadder();
+
+  renderQuadrantChart();
+
+  renderRSIRegimeChart();
 }
 
-document.getElementById("pf").innerHTML =
- rows.filter(r=>pf.has(r.Ticker)).map(card).join("");
+// ======================================================
+// MOMENTUM LADDER
+// ======================================================
 
-document.getElementById("wl").innerHTML =
- rows.filter(r=>wl.has(r.Ticker)).map(card).join("");
+function renderMomentumLadder() {
 
-// ---------- SIGNALS ----------
-function signalColor(s){
- if(s.includes("Momentum")) return "text-green";
- if(s.includes("Relative")) return "text-blue";
- if(s.includes("Institutional")) return "text-yellow";
- return "text-red";
+  const body =
+    document.getElementById(
+      "momentumTableBody"
+    );
+
+  if (!body) {
+    return;
+  }
+
+  const sorted =
+    [...rows].sort((a, b) => {
+      const av = Number(a.Daily_Composite_Score_delta ?? 0);
+      const bv = Number(b.Daily_Composite_Score_delta ?? 0);
+
+      return bv - av;
+    });
+
+  
+  
+  body.innerHTML =
+    sorted
+      .map((r) => {
+
+        const deltaRaw =
+          r.Daily_Composite_Score_delta;
+
+        const delta =
+          deltaRaw == null
+            ? "—"
+            : Number(deltaRaw).toFixed(2);
+
+        const score =
+          Number(
+            r.New_Composite_Score || 0
+          ).toFixed(1);
+
+        const rsi =
+          Number(
+            r.RSI_14Day || 0
+          ).toFixed(1);
+
+        const slope =
+          Number(
+            r.MA_Slope_50 || 0
+          ).toFixed(2);
+
+        let deltaColor =
+          "#888";
+
+        if (deltaRaw != null && Number(deltaRaw) > 0) {
+          deltaColor = "#16a34a";
+        }
+
+        if (deltaRaw != null && Number(deltaRaw) < 0) {
+          deltaColor = "#dc2626";
+        }
+
+        return (
+
+          '<tr>' +
+
+          '<td style="padding:12px;">' +
+          r.Ticker +
+          '</td>' +
+
+          '<td style="padding:12px;color:' +
+          deltaColor +
+          ';">' +
+          delta +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          score +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          rsi +
+          '</td>' +
+
+          '<td style="padding:12px;">' +
+          slope +
+          '</td>' +
+
+          '</tr>'
+        );
+
+      })
+      .join("");
 }
 
-function isBearish(t){
- return (
-  t.includes("Breakdown") ||
-  t.includes("Weak") ||
-  t.includes("Downtrend") ||
-  t.includes("Selling") ||
-  t.includes("Risk")
- );
-}
-
-let bullHTML = "";
-let bearHTML = "";
-
-signals.forEach(function(s){
-
- let bullLines = "";
- let bearLines = "";
-
- s.triggers.split(",").forEach(function(t){
-   const line = "<div class='"+signalColor(t)+"'>"+t+"</div>";
-   if(isBearish(t)) bearLines += line;
-   else bullLines += line;
- });
-
- if(bullLines){
-  bullHTML += "<div class='card'><b>"+s.ticker+"</b><br>"+bullLines+"</div>";
- }
- if(bearLines){
-  bearHTML += "<div class='card red'><b>"+s.ticker+"</b><br>"+bearLines+"</div>";
- }
-});
-
-document.getElementById("signalsGrid").innerHTML =
- "<h3>🔥 Bullish Signals</h3>" + bullHTML +
- "<h3 style='margin-top:20px'>⚠️ Bearish Signals</h3>" + bearHTML;
-
-// ---------- TRENDS ----------
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
-
-const groups = { leader:[], improving:[], weak:[], lag:[] };
-
-rows.forEach(function(r){
-  groups[Q(r)].push(r);
-});
-
-document.getElementById("leaders").innerHTML = groups.leader.map(card).join("");
-document.getElementById("improving").innerHTML = groups.improving.map(card).join("");
-document.getElementById("weakening").innerHTML = groups.weak.map(card).join("");
-document.getElementById("laggards").innerHTML = groups.lag.map(card).join("");
-
-// ✅ Scatter Chart (BALANCED + LEGEND ENHANCED)
-const chartEl = document.getElementById("chart");
-
-// ---------- LABEL SELECTION LOGIC ----------
-
-// Top 5 highest and bottom 5 lowest
-const sortedByScore = rows.slice().sort((a,b)=>b.New_Score - a.New_Score);
-const top5 = sortedByScore.slice(0,5);
-const bottom5 = sortedByScore.slice(-5);
-
-// Quadrant groups
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
+// ======================================================
+// QUADRANT CHART
+// ======================================================
 
 
-const chartGroups = {
-  leader: [],
-  improving: [],
-  weak: [],
-  lag: []
-};
+function renderQuadrantChart() {
 
 
-rows.forEach(function(r){
-  chartGroups[Q(r)].push(r);
-});
 
-// pick specific counts
-const selected = []
-  .concat(top5)
-  .concat(bottom5)
-  .concat(chartGroups.leader.slice(0,3))
-  .concat(chartGroups.improving.slice(0,3))
-  .concat(chartGroups.weak.slice(0,2))
-  .concat(chartGroups.lag.slice(0,2));
+  // ==========================================
+  // DESTROY EXISTING INSTANCE
+  // ==========================================
 
+  const existing =
+    Chart.getChart(
+      "quadrantChart"
+    );
 
-// ✅ deduplicate tickers
-const labelSet = new Set(selected.map(r => r.Ticker));
+  if (existing) {
 
+    existing.destroy();
+  }
 
-// ---------- CHART ----------
-if (chartEl && window.Chart) {
-  new Chart(chartEl, {
-    type: "scatter",
-    data: {
-      datasets: [{
-        label: "Trend vs Score",
+  // ==========================================
+  // GET CANVAS
+  // ==========================================
 
-        pointBackgroundColor: function(ctx){
-          return ctx.raw.pointBackgroundColor;
-        },
+  const ctx =
+    document.getElementById(
+      "quadrantChart"
+    );
 
-        pointRadius: function(ctx){
-          return ctx.raw.isPortfolio ? 7 : 4;
-        },
+  if (!ctx) {
+    return;
+  }
 
-        pointBorderWidth: function(ctx){
-          return ctx.raw.isPortfolio ? 2 : 0;
-        },
+  // ==========================================
+  // BUILD QUADRANT DATA
+  // ==========================================
 
-        pointBorderColor: function(ctx){
-          return ctx.raw.isPortfolio ? "#ffffff" : "transparent";
-        },
+  const quadrantData =
+    rows.map((r) => {
 
-        pointHoverRadius: 8,
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        );
 
-        data: rows.map(function(r){
+      const slope =
+  Number(
+    r.MA_Slope_50 || 0
+  );
 
-          let color = "cyan";
+      const rs =
+        Number(
+          r.RS_Rank || 0
+        );
 
-          if(r.New_Score >= 60 && r.MA_Slope > 0) color = "#00e676";
-          else if(r.New_Score < 60 && r.MA_Slope > 0) color = "#00bcd4";
-          else if(r.New_Score >= 60) color = "#ffd600";
-          else color = "#f44336";
+      let color =
+        "#888";
 
-          return {
-            x: r.MA_Slope || 0,
-            y: r.New_Score || 0,
-            label: r.Ticker,
-            pointBackgroundColor: color,
-            isPortfolio: pf.has(r.Ticker) || wl.has(r.Ticker), // ✅ portfolio + watchlist
-            showLabel: labelSet.has(r.Ticker) // ✅ controlled labeling
-          };
-        })
-      }]
-    },
+      // ======================================
+      // QUADRANT COLOR LOGIC
+      // ======================================
 
-    options: {
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              const d = ctx.raw;
-              return (
-                d.label +
-                " | Score: " + d.y.toFixed(1) +
-                " | Trend: " + d.x.toFixed(3)
-              );
-            }
-          }
-        },
+      if (
+        score >= 80 &&
+        slope > 0
+      ) {
 
-        zoom: {
-          pan: { enabled:true, mode:'xy' },
-          zoom: {
-            wheel:{enabled:true},
-            pinch:{enabled:true},
-            mode:'xy'
-          }
-        },
+        color = "#16a34a";
+      }
 
-        legend: { display:false }
-      },
+      else if (
+        score >= 60
+      ) {
+
+        color = "#eab308";
+      }
+
+      else {
+
+        color = "#dc2626";
+      }
+
+      return {
+
+        label:
+          r.Ticker,
+
+        x:
+          slope,
+
+        y:
+          score,
+
+        radius:
+          Math.max(
+            4,
+            rs / 20
+          ),
+
+        backgroundColor:
+          color
+      };
+    });
+
+  // ==========================================
+  // VALIDATION LOG
+  // ==========================================
+
+  // ==========================================
+// RUNTIME X-AXIS RANGE (MA_Slope_50)
+// ==========================================
+
+const xValues =
+  quadrantData
+    .map(p => p.x)
+    .filter(Number.isFinite);
+
+const xMin =
+  Math.min(...xValues);
+
+const xMax =
+  Math.max(...xValues);
+
+// Prevent zero-width ranges.
+const span =
+  Math.max(
+    xMax - xMin,
+    0.02
+  );
+
+// 15% visual padding.
+const padding =
+  span * 0.15;
+
+  // ==========================================
+// QUADRANT MIDPOINTS
+// ==========================================
+
+const yValues =
+  quadrantData
+    .map(p => p.y)
+    .filter(Number.isFinite);
+
+const xMid =
+  (xMin + xMax) / 2;
+
+const yMin =
+  Math.min(...yValues);
+
+const yMax =
+  Math.max(...yValues);
+
+const yMid =
+  (yMin + yMax) / 2;
+
+  // ==========================================
+// QUADRANT GUIDE PLUGIN
+// ==========================================
+
+const quadrantGuide = {
+
+  id: "quadrantGuide",
+
+  beforeDraw(chart) {
+
+    const {
+
+      ctx,
 
       scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Trend (MA Slope)",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" }
-        },
 
-        y: {
-          title: {
-            display: true,
-            text: "Score",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" },
-          min:0,
-          max:100
-        }
+        x,
+
+        y
+
       }
-    },
 
-    plugins: [
+    } = chart;
 
-      // ✅ LABELS
-      {
-        id: 'pointLabels',
-        afterDatasetsDraw(chart) {
-          const ctx = chart.ctx;
+    const xPixel =
+      x.getPixelForValue(xMid);
 
-          chart.data.datasets[0].data.forEach(function(p,i){
-            if(!p.showLabel) return;
-
-            const meta = chart.getDatasetMeta(0).data[i];
-            const pos = meta.getProps(['x','y'], true);
-
-            ctx.fillStyle = "#ddd";
-            ctx.font = "10px sans-serif";
-            ctx.fillText(p.label, pos.x + 6, pos.y - 6);
-          });
-        }
-      },
-
-      // ✅ LEGEND (ENHANCED)
-     {
-  id: 'legendOverlay',
-  beforeDraw(chart) {
-    const ctx = chart.ctx;
-    const chartArea = chart.chartArea;
-
-    // ✅ Position in top-right corner
-    const x = chartArea.right - 180;
-    const y = chartArea.top + 10;
+    const yPixel =
+      y.getPixelForValue(yMid);
 
     ctx.save();
 
-    // ✅ Background box (prevents clutter)
-    ctx.fillStyle = "rgba(20,20,20,0.85)";
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle =
+      "rgba(255,191,0,0.90)";
+
+    ctx.lineWidth = 2;
+
+    ctx.setLineDash([8,6]);
 
     ctx.beginPath();
-    ctx.roundRect(x - 10, y - 5, 190, 100, 8);
-    ctx.fill();
+
+    ctx.moveTo(
+      xPixel,
+      y.top
+    );
+
+    ctx.lineTo(
+      xPixel,
+      y.bottom
+    );
+
+    ctx.moveTo(
+      x.left,
+      yPixel
+    );
+
+    ctx.lineTo(
+      x.right,
+      yPixel
+    );
+
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // ✅ Text styling
-    ctx.fillStyle = "#ddd";
-    ctx.font = "12px sans-serif";
+    // ------------------------------------
+// Quadrant Labels
+// ------------------------------------
 
-    let lineY = y + 10;
+ctx.fillStyle =
+  "rgba(255,191,0,0.95)";
 
-    ctx.fillText("🟢 Leaders", x, lineY); lineY += 18;
-    ctx.fillText("🔵 Improving", x, lineY); lineY += 18;
-    ctx.fillText("🟡 Weakening", x, lineY); lineY += 18;
-    ctx.fillText("🔴 Laggards", x, lineY); lineY += 18;
+ctx.font =
+  "bold 13px Arial";
 
-    // ✅ divider line
-    ctx.strokeStyle = "#555";
-    ctx.beginPath();
-    ctx.moveTo(x, lineY);
-    ctx.lineTo(x + 150, lineY);
-    ctx.stroke();
+ctx.textAlign =
+  "center";
 
-    lineY += 15;
+ctx.textBaseline =
+  "middle";
 
-    ctx.fillStyle = "#ccc";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("⬤ White border = Portfolio / Watchlist", x, lineY);
+const pad = 18;
+
+ctx.fillText(
+  "Q2",
+  x.left + pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q1",
+  x.right - pad,
+  y.top + pad
+);
+
+ctx.fillText(
+  "Q3",
+  x.left + pad,
+  y.bottom - pad
+);
+
+ctx.fillText(
+  "Q4",
+  x.right - pad,
+  y.bottom - pad
+);
 
     ctx.restore();
-  }
-}
 
-    ]
+  }
+
+};
+
+  // ==========================================
+  // CHART
+  // ==========================================
+
+  new Chart(ctx, {
+
+    type: "bubble",
+
+    data: {
+
+      datasets: [{
+
+        label:
+          "Leadership Structure",
+
+        data:
+          quadrantData
+      }]
+    },
+    plugins: [
+
+  quadrantGuide
+
+],
+
+    options: {
+
+      responsive: true,
+
+      plugins: {
+
+        legend: {
+
+          display: false
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            label:
+              function(context) {
+
+                const point =
+                  context.raw;
+
+                return (
+
+  point.label +
+
+  " | Score: " +
+
+  point.y.toFixed(1) +
+
+  " | MA Slope (50D): " +
+
+  point.x.toFixed(4)
+
+);
+              }
+          }
+        }
+      },
+
+      scales: {
+
+        // ======================================
+        // X AXIS
+        // ======================================
+
+        x: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "MA Slope (50D)",
+
+            color:
+              "#ddd"
+          },
+
+          min: xMin - padding,
+
+          max: xMax + padding,
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.18)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
+          }
+        },
+
+        // ======================================
+        // Y AXIS
+        // ======================================
+
+        y: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "Composite Score",
+
+            color:
+              "#ddd"
+          },
+
+          min: 0,
+
+          max: 100,
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.12)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
+          }
+        }
+      }
+    }
   });
 }
 
-// ---------- PORTFOLIO RISK (ENHANCED + BACKWARD SAFE) ----------
-const portfolioRows = rows.filter(r => pf.has(r.Ticker));
 
-// ✅ preserve your original counts
-let greenCount = 0;
-let yellowCount = 0;
-let redCount = 0;
 
-// ✅ new scoring system
-let totalRiskPoints = 0;
-let riskHTML = "";
-let contributors = [];
+// ======================================================
+// RSI REGIME
+// ======================================================
 
-portfolioRows.forEach(function(r){
 
-  let flags = [];
-  let risk = 0;
+function renderRSIRegimeChart() {
 
-  // ✅ ORIGINAL COLOR CLASSIFICATION (PRESERVED)
-  if(r.New_Score >= 80) greenCount++;
-  else if(r.New_Score >= 40) yellowCount++;
-  else redCount++;
+  // ==========================================
+  // DESTROY EXISTING CHART
+  // ==========================================
 
-  // ✅ SCORING MODEL (NEW)
-  if(r.New_Score < 40){
-    risk += 40;
-    flags.push("Weak Score");
-  }
-  else if(r.New_Score < 60){
-    risk += 20;
+  const existing =
+    Chart.getChart(
+      "rsiRegimeChart"
+    );
+
+  if (existing) {
+
+    existing.destroy();
   }
 
-  if(r.MA_Slope < 0){
-    risk += 30;
-    flags.push("Downtrend");
+  // ==========================================
+  // GET CANVAS
+  // ==========================================
+
+  const ctx =
+    document.getElementById(
+      "rsiRegimeChart"
+    );
+
+  if (!ctx) {
+
+    return;
   }
 
-  if(r.Drawdown_pct > 30){
-    risk += 30;
-    flags.push("Drawdown Risk");
-  }
+  // ==========================================
+  // BUILD RSI POINTS
+  // ==========================================
 
-  totalRiskPoints += risk;
+  const scatterData =
+    rows.map((r, index) => {
 
-  // ✅ preserve your alert logic
-  if(flags.length){
-    riskHTML += "<div class='card red'>" +
-      "<b>" + r.Ticker + "</b><br>" +
-      flags.join("<br>") +
-    "</div>";
-  }
+      const rsi =
+  Number(
+    r.RSI_14Day || 0
+  );
 
-  // ✅ NEW: contributor ranking
-  if(risk >= 40){
-    contributors.push({
-      ticker: r.Ticker,
-      risk: risk,
-      reasons: flags
-    });
-  }
+      const score =
+        Number(
+          r.New_Composite_Score || 0
+        );
 
-});
+      let color =
+        "#888";
 
-// ✅ FINAL SCORE (NEW)
-let avgRisk = 0;
+      // ==============================
+      // REGIME COLORS
+      // ==============================
 
-if(portfolioRows.length > 0){
-  avgRisk = Math.round(totalRiskPoints / portfolioRows.length);
+      if (rsi > 60) {
+
+        color = "#16a34a";
+      }
+
+      else if (rsi >= 40) {
+
+        color = "#eab308";
+      }
+
+      else {
+
+        color = "#dc2626";
+      }
+
+      let regime;
+
+if (rsi > 60) {
+
+  regime = "Strong Momentum";
+
 }
 
-if(avgRisk > 100) avgRisk = 100;
+else if (rsi >= 40) {
 
-// ✅ LEVEL (slightly refined)
-let riskLevel = "LOW";
+  regime = "Neutral";
 
-if(avgRisk >= 60) riskLevel = "HIGH";
-else if(avgRisk >= 30) riskLevel = "MODERATE";
+}
 
-// ✅ UPDATED SUMMARY (MERGED OLD + NEW)
-document.getElementById("riskSummary").innerHTML =
-  "<b>Risk Score: " + avgRisk + " / 100</b><br><br>" +
-  "Level: " + riskLevel + "<br><br>" +
-  "Exposure → " +
-  "🟢 " + greenCount +
-  " | 🟡 " + yellowCount +
-  " | 🔴 " + redCount;
+else {
 
-// ✅ TOP CONTRIBUTORS (NEW INSIGHT)
-contributors = contributors
-  .sort(function(a,b){ return b.risk - a.risk; })
-  .slice(0,5);
+  regime = "Weak Momentum";
 
-// ✅ MERGE alerts + contributors
-document.getElementById("riskList").innerHTML =
-  contributors.length
-    ? contributors.map(function(c){
-        return "<div class='card red'>" +
-          "<b>" + c.ticker + "</b><br>" +
-          c.reasons.join("<br>") +
-        "</div>";
-      }).join("")
-    : "<span class='small'>No major risks detected</span>";
+}
 
-// ---------- TABS ----------
-function show(id,el){
- document.getElementById("analytics").classList.add("hidden");
- document.getElementById("signals").classList.add("hidden");
- document.getElementById("trends").classList.add("hidden");
- document.getElementById("risk").classList.add("hidden");
+      return {
 
- document.getElementById(id).classList.remove("hidden");
+               x:
+          score,
 
- document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
- el.classList.add("active");
+        y:
+          rsi,
+
+        r:
+          6,
+
+        ticker:
+          r.Ticker,
+
+        score:
+          score,
+
+        regime:
+          regime,
+
+        backgroundColor:
+          color
+      };
+    });
+
+  // ==========================================
+  // VALIDATION
+  // ==========================================
+
+  
+
+  // ==========================================
+  // CHART
+  // ==========================================
+
+  new Chart(ctx, {
+
+    type: "bubble",
+
+    data: {
+
+      datasets: [{
+
+    label:
+      "RSI Universe",
+
+    data:
+      scatterData,
+
+    backgroundColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderColor:
+      (ctx) => ctx.raw.backgroundColor,
+
+    borderWidth: 1.25
+
+}]
+    },
+
+    options: {
+
+      responsive: true,
+
+      plugins: {
+
+        legend: {
+
+          display: false
+        },
+
+        tooltip: {
+
+          callbacks: {
+
+            label:
+              function(context) {
+
+                const point =
+                  context.raw;
+
+                return (
+  point.ticker +
+  " | RSI-14: " +
+  point.y.toFixed(1) +
+  " | Composite: " +
+  point.score.toFixed(1) +
+  " | " +
+  point.regime
+);
+              }
+          }
+        }
+      },
+
+      scales: {
+
+        // ======================================
+        // X AXIS
+        // ======================================
+
+        x: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "Stock's Composite Score",
+
+            color:
+              "#ddd"
+          },
+          min: 0,
+
+          max: 100,
+
+          grid: {
+
+            color:
+              "rgba(255,255,255,0.08)"
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#999",
+
+            maxTicksLimit: 12
+          }
+        },
+
+        // ======================================
+        // Y AXIS
+        // ======================================
+
+        y: {
+
+          title: {
+
+            display: true,
+
+            text:
+              "RSI-14",
+
+            color:
+              "#ddd"
+          },
+
+          min: 0,
+
+          max: 100,
+
+          grid: {
+
+            color:
+              function(context) {
+
+                const value =
+                  context.tick.value;
+
+                // ==========================
+                // HIGHLIGHT THRESHOLDS
+                // ==========================
+
+                if (
+                  value === 40 ||
+                  value === 60
+                ) {
+
+                  return (
+                    "rgba(245,158,11,0.70)"
+                  );
+                }
+
+                return (
+                  "rgba(255,255,255,0.08)"
+                );
+              }
+          },
+
+          border: {
+
+            color:
+              "rgba(255,255,255,0.45)",
+
+            width: 2
+          },
+
+          ticks: {
+
+            color:
+              "#aaa"
+          }
+        }
+      }
+    }
+  });
 }
 
 </script>
-
 </body>
-</html>`;
+</html>
+`;
 }
+// ======================================================
+// MAIN
+// ======================================================
 
-// ---------- MAIN ----------
-(async()=>{
- const data = await readData();
- const html = buildHtml(data);
+(async () => {
+  const data = await readData();
 
- fs.writeFileSync(OUTPUT_PATH,html);
+  const html = buildHtml(data);
 
- if(SERVE){
-  http.createServer((req,res)=>{
-    res.writeHead(200,{"Content-Type":"text/html"});
-    res.end(html);
-  }).listen(3000,"0.0.0.0");
+  fs.writeFileSync(OUTPUT_PATH, html);
 
-  process.stdin.resume();
- }
+  console.log("analytics.html generated");
+
+  if (SERVE) {
+    http
+      .createServer((req, res) => {
+        // ==========================================
+        // API: analytics runtime data
+        // ==========================================
+
+        if (req.url === "/api/analytics-data.js") {
+          const payload = `
+window.__ANALYTICS__ = ${JSON.stringify(data)};
+`;
+
+          res.writeHead(200, {
+            "Content-Type": "application/javascript",
+          });
+
+          res.end(payload);
+
+          return;
+        }
+
+        // ==========================================
+        // DEFAULT: analytics html
+        // ==========================================
+
+        res.writeHead(200, {
+          "Content-Type": "text/html",
+        });
+
+        res.end(html);
+      })
+      .listen(3000, "0.0.0.0", () => {
+        console.log("Server running at http://localhost:3000");
+      });
+  }
 })();

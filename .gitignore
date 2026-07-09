@@ -3,3 +3,4 @@ data/stocks.xlsx
 .env
 *.log
 
+node_modules/

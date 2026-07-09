@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js && node visualizer.js",
+    "start": "node scripts/createWorkbook.js && node index.js && node visualizer-report.js && node visualizer-analytics.js && node server/serveReport.js",
     "analytics": "node visualizer-analytics.js",
+    "report": "node visualizer-report.js",
     "analytics:serve": "node visualizer-analytics.js --serve",
     "screen-rut": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js rut",
     "screen-dji": "node --use-system-ca --experimental-specifier-resolution=node scripts/screenIndex.js dji",
@@ -20,7 +21,12 @@
     "format:check": "prettier --check .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "visualize": "node --use-system-ca visualizer.js",
-    "visualize:serve": "node --use-system-ca visualizer.js --serve"
+    "visualize:serve": "node --use-system-ca visualizer.js --serve",
+    "visualize-report": "node --use-system-ca visualizer-report.js",
+    "visualize-report:serve": "node --use-system-ca visualizer-report.js --serve",
+    "build:report": "node --use-system-ca visualizer-report.js",
+    "build:analytics": "node --use-system-ca visualizer-analytics.js",
+    "build:nightly": "node scripts/createWorkbook.js && node --experimental-specifier-resolution=node index.js && npm run build:report && npm run build:analytics && cp data/report.html data/index.html"
   },
   "keywords": [],
   "author": "",
@@ -29,10 +35,16 @@
   "dependencies": {
     "@stonksjs/finviz": "^3.0.1",
     "axios": "^1.15.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
     "dayjs": "^1.11.20",
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
+    "express": "^5.2.1",
     "firebase": "^12.13.0",
+    "firebase-admin": "^14.0.0",
+    "helmet": "^8.2.0",
+    "morgan": "^1.11.0",
     "simple-statistics": "^7.8.9",
     "yahoo-finance2": "^3.14.0"
   },

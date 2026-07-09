@@ -94,34 +94,25 @@ export async function writeScores(rows, signals) {
   });
 
   // =========================
-// SignalsTriggered Sheet
-// =========================
+  // SignalsTriggered Sheet
+  // =========================
 
-let signalSheet = workbook.getWorksheet("SignalsTriggered");
-if (!signalSheet) signalSheet = workbook.addWorksheet("SignalsTriggered");
+  let signalSheet = workbook.getWorksheet("SignalsTriggered");
+  if (!signalSheet) signalSheet = workbook.addWorksheet("SignalsTriggered");
 
-// Headers
-signalSheet.getRow(1).values = [
-  "Ticker",
-  "Score",
-  "Triggers"
-];
+  // Headers
+  signalSheet.getRow(1).values = ["Ticker", "Score", "Triggers"];
 
-// Clear existing rows
-const lastSignalRow = signalSheet.lastRow?.number || 1;
-if (lastSignalRow > 1) {
-  signalSheet.spliceRows(2, lastSignalRow - 1);
-}
+  // Clear existing rows
+  const lastSignalRow = signalSheet.lastRow?.number || 1;
+  if (lastSignalRow > 1) {
+    signalSheet.spliceRows(2, lastSignalRow - 1);
+  }
 
-// Populate
-signals.forEach((s, i) => {
-  signalSheet.getRow(i + 2).values = [
-    s.ticker,
-    s.score,
-    s.triggers
-  ];
-});
-
+  // Populate
+  signals.forEach((s, i) => {
+    signalSheet.getRow(i + 2).values = [s.ticker, s.score, s.triggers];
+  });
 
   await workbook.xlsx.writeFile(WORKBOOK_PATH);
 }

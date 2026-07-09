@@ -1,0 +1,4 @@
+./visualizer-analytics.js:const safe = JSON.stringify(data).replace(/</g, "\\u003c");
+./data/analytics.html.backup:<script src="/api/analytics-data.js"></script>
+./data/analytics.html.backup:// from /api/analytics-data.js
+./data/analytics.html.backup:  window.__ANALYTICS__ || {

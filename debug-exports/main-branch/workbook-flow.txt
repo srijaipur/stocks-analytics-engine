@@ -1,0 +1,65 @@
+./scripts/cleanWorkbook.js: * Clean and regenerate data/stocks.xlsx from canonical ticker configuration
+./scripts/cleanWorkbook.js: *   1. Deletes the existing stocks.xlsx file
+./scripts/cleanWorkbook.js: *   2. Regenerates a fresh workbook from Firestore/local fallback configuration
+./scripts/cleanWorkbook.js:const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
+./scripts/cleanWorkbook.js:// Remove existing workbook
+./scripts/cleanWorkbook.js:// Regenerate fresh workbook by importing createWorkbook
+./scripts/cleanWorkbook.js:console.log("📄 Regenerating clean workbook from canonical ticker configuration...");
+./scripts/createWorkbook.js: * Run once to create data/stocks.xlsx with the required worksheets.
+./scripts/createWorkbook.js:const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
+./scripts/createWorkbook.js:const workbook = new ExcelJS.Workbook();
+./scripts/createWorkbook.js:// If the workbook already exists, load it so we can add missing sheets
+./scripts/createWorkbook.js:  await workbook.xlsx.readFile(WORKBOOK_PATH);
+./scripts/createWorkbook.js:  console.log("📂 Existing stocks.xlsx loaded — only adding missing sheets.");
+./scripts/createWorkbook.js:  console.log("📄 Creating new stocks.xlsx...");
+./scripts/createWorkbook.js:  if (!workbook.getWorksheet(name)) {
+./scripts/createWorkbook.js:    const sheet = workbook.addWorksheet(name);
+./scripts/createWorkbook.js:    sheet.getRow(1).values = headerRow;
+./scripts/createWorkbook.js:  return workbook.getWorksheet(name);
+./scripts/createWorkbook.js:// Writes a ticker list to a sheet, always replacing whatever is there.
+./scripts/createWorkbook.js:function writeTickers(sheet, tickers) {
+./scripts/createWorkbook.js:  const lastRow = sheet.lastRow?.number || 1;
+./scripts/createWorkbook.js:  if (lastRow > 1) sheet.spliceRows(2, lastRow - 1);
+./scripts/createWorkbook.js:  tickers.forEach((t, i) => { sheet.getRow(i + 2).values = [t]; });
+./scripts/createWorkbook.js:// --- Portfolio sheet ---
+./scripts/createWorkbook.js:// --- Watchlist sheet ---
+./scripts/createWorkbook.js:// --- ScoresCurrent sheet (managed by engine) ---
+./scripts/createWorkbook.js:ensureSheet("ScoresPreviousDay", ["_date_", ""]); // managed by writeSheet.js — do not edit manually
+./scripts/createWorkbook.js:// --- Index sheets (populated by npm run screen-* scripts) ---
+./scripts/createWorkbook.js:await workbook.xlsx.writeFile(WORKBOOK_PATH);
+./scripts/screenIndex.js: * computes Alpha, and writes the top N tickers to the corresponding Excel sheet.
+./scripts/screenIndex.js:const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
+./scripts/screenIndex.js:// topN:          max tickers to write to the sheet
+./scripts/screenIndex.js:// both the Finviz URL and the criteria panel written to each index sheet.
+./scripts/screenIndex.js:    sheetName: "Russel_2000",
+./scripts/screenIndex.js:    sheetName: "Dow_Jones",
+./scripts/screenIndex.js:    sheetName: "Nasdaq",
+./scripts/screenIndex.js:    sheetName: "SP_100",
+./scripts/screenIndex.js:async function runScreener(config, sp100Prices, workbook) {
+./scripts/screenIndex.js:  // Write to sheet
+./scripts/screenIndex.js:  let sheet = workbook.getWorksheet(config.sheetName);
+./scripts/screenIndex.js:  if (!sheet) sheet = workbook.addWorksheet(config.sheetName);
+./scripts/screenIndex.js:  sheet.spliceRows(1, sheet.rowCount);
+./scripts/screenIndex.js:  sheet.getRow(1).getCell(1).value = "Ticker";
+./scripts/screenIndex.js:    sheet.getRow(i + 2).getCell(1).value = r.ticker;
+./scripts/screenIndex.js:    const r = sheet.getRow(i + 1);
+./scripts/screenIndex.js:    `💾 Written to sheet "${config.sheetName}" (${top.length} tickers + criteria panel).`
+./scripts/screenIndex.js:  const workbook = new ExcelJS.Workbook();
+./scripts/screenIndex.js:  await workbook.xlsx.readFile(WORKBOOK_PATH);
+./scripts/screenIndex.js:    await runScreener(INDEX_CONFIGS[key], sp100Prices, workbook);
+./scripts/screenIndex.js:  await workbook.xlsx.writeFile(WORKBOOK_PATH);
+./scripts/screenIndex.js:  console.log("\n✅ All done. stocks.xlsx updated.");
+./visualizer.js:// Reads ScoresCurrent from data/stocks.xlsx and generates data/report.html
+./visualizer.js:const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+./visualizer.js:  const workbook = new ExcelJS.Workbook();
+./visualizer.js:  await workbook.xlsx.readFile(WORKBOOK_PATH);
+./visualizer.js:  const sheet = workbook.getWorksheet("ScoresCurrent");
+./visualizer.js:  if (!sheet) throw new Error("ScoresCurrent sheet not found. Run `npm start` first.");
+./visualizer.js:  sheet.eachRow((row, rowNumber) => {
+./visualizer-analytics.js:const WORKBOOK_PATH = path.resolve(__dirname, "data/stocks.xlsx");
+./visualizer-analytics.js:  await wb.xlsx.readFile(WORKBOOK_PATH);
+./visualizer-analytics.js:  const sheet = wb.getWorksheet("ScoresCurrent");
+./visualizer-analytics.js:  sheet.eachRow((row, i) => {
+./visualizer-analytics.js:  const signalsSheet = wb.getWorksheet("SignalsTriggered");
+./visualizer-analytics.js:  const ps = wb.getWorksheet("Portfolio");
+./visualizer-analytics.js:  const ws = wb.getWorksheet("Watchlist");

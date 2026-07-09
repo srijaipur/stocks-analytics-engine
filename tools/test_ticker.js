@@ -1,5 +1,5 @@
-import { getPrices } from "./data/prices.js";
-import { getFundamentals } from "./data/fundamentals.js";
+import { getPrices } from "../data/prices.js";
+import { getFundamentals } from "../data/fundamentals.js";
 
 const ticker = "BIO";
 console.log(`Testing ticker: ${ticker}`);

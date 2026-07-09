@@ -5,9 +5,7 @@ try {
 
   console.log("Firestore connection successful");
   console.log(JSON.stringify(data, null, 2));
-
 } catch (err) {
-
   console.error("Firestore test failed");
   console.error(err);
 

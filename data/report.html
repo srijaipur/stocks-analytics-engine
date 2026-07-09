@@ -1,552 +1,733 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-
-<!-- ✅ FIXED CHART LOAD -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stocks Analytics Report — Authenticated</title>
 <style>
-body { background:#0f1117; color:#ddd; font-family:sans-serif }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { min-height: 100vh; font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; }
+  .hidden { display: none; }
+  .center-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .auth-card, .card { background: #151824; border: 1px solid #2d3344; border-radius: 16px; padding: 24px; max-width: 900px; width: 100%; }
+  .report-wide {  width: 100%; max-width: none;}
+  .login-btn, .logout-btn { border: none; border-radius: 10px; padding: 12px 18px; cursor: pointer; background: #2196f3; color: white; font-weight: 700; }
+  .login-btn:hover, .logout-btn:hover { background: #64b5f6; }
+  header { padding: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  header h1 { font-size: 1.6rem; }
+  .subtitle { color: #8a97b3; font-size: 0.95rem; margin-top: 8px; }
+  .search-wrap { padding: 0 24px 16px; }
+  input[type=search] { width: 100%; max-width: 320px; padding: 10px 14px; border-radius: 10px; border: 1px solid #2d3344; background: #0f1117; color: #e0e0e0; }
+  .page { padding: 0 24px 24px; }
 
-.tabs { display:flex; gap:10px; padding:10px }
-.tab { background:#1a1d27; padding:8px; cursor:pointer }
-.active { background:#333 }
-
-.grid {
- display:grid;
- grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
- gap:10px;
- padding:10px;
-}
-
-.card {
- background:#1a1d27;
- border-radius:10px;
- padding:10px;
- text-align:center;
-}
-
-.score { font-size:1.4rem }
-
-.green { border:1px solid #00e676 }
-.yellow { border:1px solid #ffd600 }
-.red { border:1px solid #f44336 }
-
-.text-green { color:#00e676 }
-.text-blue { color:#00bcd4 }
-.text-yellow { color:#ffd600 }
-.text-red { color:#f44336 }
-
-.small { font-size:0.8rem; color:#aaa }
-
-.hidden { display:none }
+  .analytics-link {  font-size: 0.78rem;  padding: 0.35rem 0.8rem; 
+  border-radius: 999px; border: 1px solid #2196f355; background:
+   #0d1a2e; color: #90caf9; text-decoration: none; font-weight: 
+   600; transition: all 0.15s ease;
+   /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+    }
+  .analytics-link:hover {  background: #13233d; border-color: #64b5f6;}
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; padding: 0 24px 24px; }
+  .ticker-card { border-radius: 16px; padding: 14px; background: #1b2030; border: 1px solid #2d3344; }
+  .ticker-card h2 { font-size: 0.9rem; margin-bottom: 8px; color: #d1d9ff; }
+  .ticker-card p { font-size: 0.82rem; color: #b0b7c8; line-height: 1.5; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { padding: 10px 14px; border-bottom: 1px solid #2d3344; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { background: #171d2f; position: sticky; top: 0; z-index: 2; }
+  tbody tr:hover { background: #1f273f; }
+  .pill { border-radius: 999px; padding: 4px 10px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
+  .pill.green { background: rgba(76, 175, 80, 0.18); color: #81c784; }
+  .pill.blue { background: rgba(33, 150, 243, 0.18); color: #90caf9; }
+  .pill.orange { background: rgba(255, 152, 0, 0.16); color: #ffb74d; }
+  .pill.red { background: rgba(244, 67, 54, 0.16); color: #ef9a9a; }
+  .summary-line { margin-top: 8px; color: #8a97b3; font-size: 0.94rem; }
 </style>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-
-<h2 style="padding-left:10px">📊 Full Dashboard</h2>
-
-<div class="tabs">
- <div class="tab active" onclick="show('analytics',this)">Analytics</div>
- <div class="tab" onclick="show('signals',this)">Signals</div>
- <div class="tab" onclick="show('trends',this)">Trends</div>
- <div class="tab" onclick="show('risk',this)">Risk</div>
+<div id="auth"></div>
+<div id="app" class="hidden">
+<header>
+  <div>
+    <h1>Stocks Analytics Report</h1>
+    <div class="subtitle">Authenticated client report built from Stocks Universe</div>
+  </div>
+  <div>
+  <a class="analytics-link" href="analytics-loader.html">
+  Advanced Anlytical Signals →
+</a>
+</div>
+  <button id="logoutBtn" class="logout-btn">Logout</button>
+</header>
+<div class="page">
+  <div class="search-wrap">
+    <input type="search" id="filterInput" placeholder="Filter by ticker or metric..." />
+  </div>
+  <div class="card-grid" id="cardGrid"></div>
+  <!-- Upcoming Earnings (next 14 days) -->
+<div class="earnings-section">
+  <h2>&#128197; Upcoming Earnings &mdash; Next 14 Days</h2>
+  <div class="earnings-strip" id="earningsStrip"></div>
 </div>
 
-<!-- ✅ ANALYTICS -->
-<div id="analytics">
-<h3>📊 Portfolio</h3>
-<div id="pf" class="grid"></div>
+<div class="grid">
 
-<h3>👀 Watchlist</h3>
-<div id="wl" class="grid"></div>
-</div>
+  <!-- Alpha vs RSI Scatter -->
+  <div class="card report-wide">
+    <h2>Jensen's Alpha (63D) vs RSI-14</h2>
+    <canvas id="scatterChart"></canvas>
+  </div>
 
-<!-- ✅ SIGNALS -->
-<div id="signals" class="hidden">
-<div id="signalsGrid" class="grid"></div>
-</div>
-
-<!-- ✅ TRENDS -->
-<div id="trends" class="hidden">
-
-<h3>🚀 Leaders</h3>
-<div id="leaders" class="grid"></div>
-
-<h3>⚡ Improving</h3>
-<div id="improving" class="grid"></div>
-
-<h3>⚠ Weakening</h3>
-<div id="weakening" class="grid"></div>
-
-<h3>❌ Laggards</h3>
-<div id="laggards" class="grid"></div>
-
-<canvas id="chart"></canvas>
-
-</div>
-
-<!-- ✅ RISK TAB -->
-<div id="risk" class="hidden">
-
-<h3>🛡️ Portfolio Health</h3>
-<div id="riskSummary" class="small" style="padding:10px;"></div>
-
-<h4>⚠️ Risk Alerts</h4>
-<div id="riskList" class="grid"></div>
+  <!-- MA Slope vs Composite -->
+  <div class="card report-wide">
+    <h2>Composite Score vs MA Slope (50D)</h2>
+    <canvas id="slopeChart"></canvas>
+  </div>
 
 </div>
 
-<script>
+  <div class="card table-wrap report-wide">
+  <div class="search-wrap">
+  <input
+    type="search"
+    id="tableFilterInput"
+    placeholder="Filter table by ticker…" />
+</div>
+    <h2>Full Scores Table</h2>
+    <div class="summary-line" id="rowCount"></div>
+    <table>
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
 
-const data = {"rows":[{"Ticker":"XOM","EPS_TTM":5.93,"EPS_Percentile":64.55696202531645,"EPS_Growth":-1.5446880269814502,"Inst_Accumulation":-0.05,"Alpha_63D":-0.01238980890086984,"Beta":0.18,"RSI":51.62,"SMA200_Dist":17.75,"MA_Slope":-0.0010214726622593266,"Volume_Expansion":false,"Net_Inst":325,"RS_vs_SP100":-0.09931581803557199,"Return_63D":1.744151017747948,"RS_Rank":41.77215189873418,"Drawdown_%":15.687871758897787,"Old_Score":41.89873417721519,"New_Score":32.84810126582278,"Earnings_Date":"2026-05-01","Delta":-0.25},{"Ticker":"AMD","EPS_TTM":3.05,"EPS_Percentile":49.36708860759494,"EPS_Growth":23.98032786885246,"Inst_Accumulation":2.08,"Alpha_63D":0.8977684935470766,"Beta":2.43,"RSI":76.34,"SMA200_Dist":100.36,"MA_Slope":0.10087590049150968,"Volume_Expansion":false,"Net_Inst":171,"RS_vs_SP100":1.04935897289174,"Return_63D":116.61163011047915,"RS_Rank":94.9367088607595,"Drawdown_%":26.467189489392297,"Old_Score":76.07594936708861,"New_Score":64.9367088607595,"Earnings_Date":"2026-05-05","Delta":0},{"Ticker":"SNOW","EPS_TTM":-3.95,"EPS_Percentile":6.329113924050633,"EPS_Growth":9.865822784810128,"Inst_Accumulation":2.62,"Alpha_63D":-0.25742575530792045,"Beta":1.1,"RSI":52.47,"SMA200_Dist":-25.95,"MA_Slope":-0.011147903158076383,"Volume_Expansion":false,"Net_Inst":-69,"RS_vs_SP100":-0.2468250224866153,"Return_63D":-13.006769427356394,"RS_Rank":15.18987341772152,"Drawdown_%":48.360550359989794,"Old_Score":31.0126582278481,"New_Score":14.810126582278478,"Earnings_Date":"2026-05-27","Delta":0},{"Ticker":"TSLA","EPS_TTM":1.09,"EPS_Percentile":43.037974683544306,"EPS_Growth":23.917431192660548,"Inst_Accumulation":0.63,"Alpha_63D":-0.13615623324950624,"Beta":1.81,"RSI":70.53,"SMA200_Dist":9.77,"MA_Slope":0.00961777982348318,"Volume_Expansion":false,"Net_Inst":28,"RS_vs_SP100":-0.05029029739693458,"Return_63D":6.646703081611673,"RS_Rank":51.89873417721519,"Drawdown_%":29.9318207359553,"Old_Score":61.77215189873418,"New_Score":45.31645569620254,"Earnings_Date":"2026-04-22","Delta":0},{"Ticker":"NFLX","EPS_TTM":3.09,"EPS_Percentile":51.89873417721519,"EPS_Growth":1.4271844660194175,"Inst_Accumulation":-0.4,"Alpha_63D":-0.02516901345413544,"Beta":1.53,"RSI":37.91,"SMA200_Dist":-14.71,"MA_Slope":-0.008179825383145704,"Volume_Expansion":false,"Net_Inst":156,"RS_vs_SP100":0.03101487049878182,"Return_63D":14.777219871183316,"RS_Rank":60.75949367088608,"Drawdown_%":20.72548824337846,"Old_Score":38.860759493670884,"New_Score":42.08860759493671,"Earnings_Date":"2026-04-16","Delta":0},{"Ticker":"NVDA","EPS_TTM":4.9,"EPS_Percentile":58.22784810126582,"EPS_Growth":6.242857142857143,"Inst_Accumulation":0.14,"Alpha_63D":0.002445248234289321,"Beta":2.25,"RSI":76.18,"SMA200_Dist":26.19,"MA_Slope":0.02207931320336696,"Volume_Expansion":false,"Net_Inst":0,"RS_vs_SP100":0.13495440850060358,"Return_63D":25.171173671365487,"RS_Rank":70.88607594936708,"Drawdown_%":15.539987609451147,"Old_Score":64.43037974683543,"New_Score":54.55696202531646,"Earnings_Date":"2026-05-20","Delta":0},{"Ticker":"UNH","EPS_TTM":13.24,"EPS_Percentile":86.07594936708861,"EPS_Growth":-0.012084592145015116,"Inst_Accumulation":0.43,"Alpha_63D":0.3224922725360976,"Beta":0.66,"RSI":83.87,"SMA200_Dist":24.99,"MA_Slope":0.03278211098778094,"Volume_Expansion":false,"Net_Inst":-140,"RS_vs_SP100":0.28644978094366014,"Return_63D":40.320710915671164,"RS_Rank":84.81012658227847,"Drawdown_%":27.294677507005353,"Old_Score":66.07594936708861,"New_Score":55.316455696202524,"Earnings_Date":"2026-04-21","Delta":0},{"Ticker":"PLTR","EPS_TTM":0.89,"EPS_Percentile":37.9746835443038,"EPS_Growth":46.2247191011236,"Inst_Accumulation":2.14,"Alpha_63D":-0.1346267787903565,"Beta":1.49,"RSI":43.47,"SMA200_Dist":-18.03,"MA_Slope":-0.006101797654469959,"Volume_Expansion":false,"Net_Inst":54,"RS_vs_SP100":-0.0826831879659613,"Return_63D":3.407414024709004,"RS_Rank":45.56962025316456,"Drawdown_%":34.04748479877408,"Old_Score":48.9873417721519,"New_Score":41.202531645569614,"Earnings_Date":"2026-05-04","Delta":0.25},{"Ticker":"DIS","EPS_TTM":6.25,"EPS_Percentile":67.08860759493672,"EPS_Growth":0.5408000000000002,"Inst_Accumulation":1.07,"Alpha_63D":-0.12925719658795642,"Beta":1.41,"RSI":55.02,"SMA200_Dist":-3.13,"MA_Slope":0.0014049222467605465,"Volume_Expansion":false,"Net_Inst":-83,"RS_vs_SP100":-0.08579419202060534,"Return_63D":3.0963136192446155,"RS_Rank":44.303797468354425,"Drawdown_%":20.24508080818123,"Old_Score":48.22784810126583,"New_Score":38.79746835443038,"Earnings_Date":"2026-05-06","Delta":0},{"Ticker":"S","EPS_TTM":-1.36,"EPS_Percentile":12.658227848101266,"EPS_Growth":31.911764705882348,"Inst_Accumulation":8.3,"Alpha_63D":0.13403760617326035,"Beta":0.81,"RSI":63.55,"SMA200_Dist":5.28,"MA_Slope":0.021033713114448644,"Volume_Expansion":false,"Net_Inst":15,"RS_vs_SP100":0.11389621381278059,"Return_63D":23.065354202583205,"RS_Rank":68.35443037974683,"Drawdown_%":23.11654999559394,"Old_Score":53.54430379746836,"New_Score":46.455696202531655,"Earnings_Date":"2026-05-28","Delta":0},{"Ticker":"GTLB","EPS_TTM":-0.34,"EPS_Percentile":20.253164556962027,"EPS_Growth":65.85294117647058,"Inst_Accumulation":-0.32,"Alpha_63D":-0.3390113878920355,"Beta":0.82,"RSI":46.63,"SMA200_Dist":-38.15,"MA_Slope":-0.01139281110627393,"Volume_Expansion":false,"Net_Inst":-15,"RS_vs_SP100":-0.35809270697038476,"Return_63D":-24.133537875733335,"RS_Rank":5.063291139240507,"Drawdown_%":49.67608188777989,"Old_Score":39.493670886075954,"New_Score":20.696202531645564,"Earnings_Date":"2027-03-03","Delta":0},{"Ticker":"UROY","EPS_TTM":0.02,"EPS_Percentile":29.11392405063291,"EPS_Growth":-1653.5,"Inst_Accumulation":2.73,"Alpha_63D":-0.1759208009707229,"Beta":1.43,"RSI":53.88,"SMA200_Dist":5.67,"MA_Slope":-0.0026568641580235123,"Volume_Expansion":true,"Net_Inst":21,"RS_vs_SP100":-0.13033764983911078,"Return_63D":-1.3580321626059373,"RS_Rank":39.24050632911392,"Drawdown_%":39.74359086324119,"Old_Score":28.481012658227847,"New_Score":15.88607594936709,"Earnings_Date":"2027-03-10","Delta":-0.38},{"Ticker":"OKTA","EPS_TTM":1.31,"EPS_Percentile":44.303797468354425,"EPS_Growth":7.580152671755725,"Inst_Accumulation":0.33,"Alpha_63D":-0.11661797016911667,"Beta":0.6,"RSI":57.94,"SMA200_Dist":-4.21,"MA_Slope":0.010041979719406674,"Volume_Expansion":false,"Net_Inst":14,"RS_vs_SP100":-0.15902090145433723,"Return_63D":-4.226357324128582,"RS_Rank":31.645569620253166,"Drawdown_%":33.10300785656511,"Old_Score":53.92405063291139,"New_Score":35.189873417721515,"Earnings_Date":"2026-05-28","Delta":0.76},{"Ticker":"INTC","EPS_TTM":-0.63,"EPS_Percentile":18.9873417721519,"EPS_Growth":62.85714285714286,"Inst_Accumulation":5.78,"Alpha_63D":1.2291696989512908,"Beta":2.22,"RSI":69.51,"SMA200_Dist":161.02,"MA_Slope":0.12724079067001726,"Volume_Expansion":false,"Net_Inst":206,"RS_vs_SP100":1.3584986393712135,"Return_63D":147.5255967584265,"RS_Rank":100,"Drawdown_%":24.171577948970977,"Old_Score":69.49367088607595,"New_Score":61.962025316455694,"Earnings_Date":"2026-04-23","Delta":0},{"Ticker":"NTLA","EPS_TTM":-3.53,"EPS_Percentile":8.860759493670885,"EPS_Growth":12.218130311614733,"Inst_Accumulation":4.52,"Alpha_63D":-0.059777735429645346,"Beta":1.94,"RSI":47.33,"SMA200_Dist":2.21,"MA_Slope":-0.0010320582236726678,"Volume_Expansion":false,"Net_Inst":20,"RS_vs_SP100":0.039869153090623,"Return_63D":15.662648130367446,"RS_Rank":63.29113924050633,"Drawdown_%":30.2515696939809,"Old_Score":40.63291139240506,"New_Score":36.64556962025316,"Earnings_Date":"2026-05-11","Delta":0.13},{"Ticker":"CRSP","EPS_TTM":-6.21,"EPS_Percentile":2.5316455696202533,"EPS_Growth":4.355877616747182,"Inst_Accumulation":4.89,"Alpha_63D":-0.15592483762420115,"Beta":1.73,"RSI":45.43,"SMA200_Dist":-9.15,"MA_Slope":-0.013558713931326748,"Volume_Expansion":false,"Net_Inst":32,"RS_vs_SP100":-0.07853948802867361,"Return_63D":3.8217840184377816,"RS_Rank":46.835443037974684,"Drawdown_%":28.182703357372183,"Old_Score":24.55696202531646,"New_Score":23.164556962025316,"Earnings_Date":"2026-05-04","Delta":0},{"Ticker":"ALHC","EPS_TTM":0.09,"EPS_Percentile":30.37974683544304,"EPS_Growth":1446.3333333333333,"Inst_Accumulation":9.43,"Alpha_63D":-0.31769757444430774,"Beta":1.23,"RSI":34.31,"SMA200_Dist":-9.92,"MA_Slope":-0.008678430354633865,"Volume_Expansion":true,"Net_Inst":45,"RS_vs_SP100":-0.2933158889553059,"Return_63D":-17.65585607422545,"RS_Rank":8.860759493670885,"Drawdown_%":30.65938429567125,"Old_Score":48.22784810126582,"New_Score":30.949367088607595,"Earnings_Date":"2026-04-30","Delta":-0.38},{"Ticker":"BIIB","EPS_TTM":9.32,"EPS_Percentile":77.21518987341773,"EPS_Growth":0.2027896995708155,"Inst_Accumulation":-0.43,"Alpha_63D":-0.04984014908398787,"Beta":0.21,"RSI":53.67,"SMA200_Dist":15.22,"MA_Slope":0.0049513249802427125,"Volume_Expansion":true,"Net_Inst":71,"RS_vs_SP100":-0.13358593837229848,"Return_63D":-1.6828610159247124,"RS_Rank":37.9746835443038,"Drawdown_%":14.335419717590279,"Old_Score":52.911392405063296,"New_Score":40.8860759493671,"Earnings_Date":"2026-04-29","Delta":0},{"Ticker":"BIO","EPS_TTM":6.07,"EPS_Percentile":65.82278481012658,"EPS_Growth":0.9456342668863262,"Inst_Accumulation":-2.3,"Alpha_63D":-0.27936579590574756,"Beta":1.03,"RSI":33.21,"SMA200_Dist":-15.87,"MA_Slope":-0.01222796653113952,"Volume_Expansion":false,"Net_Inst":-2,"RS_vs_SP100":-0.276185576059356,"Return_63D":-15.942824784630464,"RS_Rank":12.658227848101266,"Drawdown_%":25.74193342123896,"Old_Score":37.72151898734177,"New_Score":27.405063291139236,"Earnings_Date":"2026-04-30","Delta":0},{"Ticker":"ENPH","EPS_TTM":1.02,"EPS_Percentile":41.77215189873418,"EPS_Growth":13.990196078431373,"Inst_Accumulation":5.19,"Alpha_63D":-0.06563929377820135,"Beta":1.3,"RSI":75.01,"SMA200_Dist":31.41,"MA_Slope":-0.00912194805209317,"Volume_Expansion":false,"Net_Inst":18,"RS_vs_SP100":-0.033837095314285914,"Return_63D":8.29202328987655,"RS_Rank":53.16455696202531,"Drawdown_%":39.63614933355383,"Old_Score":55.44303797468354,"New_Score":38.79746835443038,"Earnings_Date":"2026-04-28","Delta":-0.51},{"Ticker":"GE","EPS_TTM":8.11,"EPS_Percentile":70.88607594936708,"EPS_Growth":0.6954377311960543,"Inst_Accumulation":0.16,"Alpha_63D":-0.22745346460144902,"Beta":1.36,"RSI":46.93,"SMA200_Dist":-3.08,"MA_Slope":-0.014743973448483924,"Volume_Expansion":false,"Net_Inst":96,"RS_vs_SP100":-0.18929082644475048,"Return_63D":-7.253349823169911,"RS_Rank":24.050632911392405,"Drawdown_%":20.966620085005058,"Old_Score":40.75949367088608,"New_Score":30.253164556962027,"Earnings_Date":"2026-04-21","Delta":0.38},{"Ticker":"META","EPS_TTM":27.51,"EPS_Percentile":97.46835443037975,"EPS_Growth":-0.7593602326426754,"Inst_Accumulation":-0.52,"Alpha_63D":-0.19121337686215006,"Beta":1.24,"RSI":47.35,"SMA200_Dist":-8.12,"MA_Slope":-0.0075053643476327555,"Volume_Expansion":false,"Net_Inst":29,"RS_vs_SP100":-0.1657716180910177,"Return_63D":-4.901428987796632,"RS_Rank":26.582278481012654,"Drawdown_%":28.794141696367475,"Old_Score":45.31645569620253,"New_Score":31.962025316455694,"Earnings_Date":"2026-04-29","Delta":-0.38},{"Ticker":"MSTR","EPS_TTM":-40.16,"EPS_Percentile":1.2658227848101267,"EPS_Growth":-0.3107569721115539,"Inst_Accumulation":9.38,"Alpha_63D":0.15592581430995772,"Beta":3.57,"RSI":62.41,"SMA200_Dist":-12.59,"MA_Slope":0.035040529196603526,"Volume_Expansion":false,"Net_Inst":33,"RS_vs_SP100":0.42836464781749983,"Return_63D":54.512197603055135,"RS_Rank":88.60759493670885,"Drawdown_%":40.33904155950217,"Old_Score":31.39240506329114,"New_Score":31.0126582278481,"Earnings_Date":"2026-05-05","Delta":0},{"Ticker":"SMR","EPS_TTM":-2.28,"EPS_Percentile":11.39240506329114,"EPS_Growth":0.8859649122807016,"Inst_Accumulation":11.91,"Alpha_63D":-0.3761670267637076,"Beta":2.23,"RSI":50.29,"SMA200_Dist":-49.54,"MA_Slope":-0.003975544961099383,"Volume_Expansion":false,"Net_Inst":48,"RS_vs_SP100":-0.24577801306165437,"Return_63D":-12.902068484860301,"RS_Rank":16.455696202531644,"Drawdown_%":55.620154465672535,"Old_Score":28.101265822784814,"New_Score":11.962025316455694,"Earnings_Date":"2026-05-07","Delta":-0.38},{"Ticker":"IONQ","EPS_TTM":-0.17,"EPS_Percentile":24.050632911392405,"EPS_Growth":-2571.7647058823527,"Inst_Accumulation":4.67,"Alpha_63D":0.4878708588671728,"Beta":3.06,"RSI":69.42,"SMA200_Dist":21.77,"MA_Slope":0.044615350892172945,"Volume_Expansion":false,"Net_Inst":-11,"RS_vs_SP100":0.7062459549860587,"Return_63D":82.300328319911,"RS_Rank":91.13924050632912,"Drawdown_%":50.63126652197354,"Old_Score":41.01265822784811,"New_Score":33.037974683544306,"Earnings_Date":"2026-05-06","Delta":0},{"Ticker":"JOBY","EPS_TTM":-1.13,"EPS_Percentile":13.924050632911392,"EPS_Growth":1.0176991150442478,"Inst_Accumulation":1.65,"Alpha_63D":-0.20457969183921387,"Beta":2.63,"RSI":60.75,"SMA200_Dist":-18.72,"MA_Slope":0.00800169742756051,"Volume_Expansion":false,"Net_Inst":37,"RS_vs_SP100":-0.03178774685194008,"Return_63D":8.496958136111138,"RS_Rank":54.43037974683544,"Drawdown_%":51.28834092723359,"Old_Score":36.58227848101266,"New_Score":26.392405063291136,"Earnings_Date":"2026-05-05","Delta":0.38},{"Ticker":"ACHR","EPS_TTM":-1.1,"EPS_Percentile":15.18987341772152,"EPS_Growth":7.536363636363636,"Inst_Accumulation":-0.68,"Alpha_63D":-0.3879769225383227,"Beta":3.14,"RSI":59.66,"SMA200_Dist":-20.69,"MA_Slope":-0.010456960261449664,"Volume_Expansion":true,"Net_Inst":28,"RS_vs_SP100":-0.1611212401623927,"Return_63D":-4.436391194934127,"RS_Rank":30.37974683544304,"Drawdown_%":45.17203183430412,"Old_Score":34.68354430379746,"New_Score":21.898734177215193,"Earnings_Date":"2026-05-11","Delta":-0.38},{"Ticker":"SOFI","EPS_TTM":0.44,"EPS_Percentile":34.177215189873415,"EPS_Growth":77.04545454545456,"Inst_Accumulation":0.62,"Alpha_63D":-0.4139591068760087,"Beta":2.11,"RSI":42.5,"SMA200_Dist":-32.51,"MA_Slope":-0.015534149204213981,"Volume_Expansion":false,"Net_Inst":-12,"RS_vs_SP100":-0.29629097255952164,"Return_63D":-17.953364434647018,"RS_Rank":7.59493670886076,"Drawdown_%":48.25819923754261,"Old_Score":41.13924050632911,"New_Score":24.36708860759493,"Earnings_Date":"2026-04-29","Delta":0},{"Ticker":"BA","EPS_TTM":1.95,"EPS_Percentile":46.835443037974684,"EPS_Growth":1656.8153846153846,"Inst_Accumulation":2.13,"Alpha_63D":-0.17095955682866515,"Beta":1.21,"RSI":54.01,"SMA200_Dist":5.44,"MA_Slope":0.004296700252854999,"Volume_Expansion":true,"Net_Inst":39,"RS_vs_SP100":-0.14869801790392434,"Return_63D":-3.1940689690872945,"RS_Rank":34.177215189873415,"Drawdown_%":24.961328061128594,"Old_Score":64.9367088607595,"New_Score":47.53164556962025,"Earnings_Date":"2026-04-22","Delta":0.38},{"Ticker":"AVGO","EPS_TTM":5.13,"EPS_Percentile":59.49367088607595,"EPS_Growth":10.688109161793372,"Inst_Accumulation":0.9,"Alpha_63D":0.14893465812358012,"Beta":1.43,"RSI":64.78,"SMA200_Dist":25.69,"MA_Slope":0.030128371718951562,"Volume_Expansion":false,"Net_Inst":176,"RS_vs_SP100":0.19451780925519224,"Return_63D":31.12751374682437,"RS_Rank":78.48101265822784,"Drawdown_%":17.25839209766727,"Old_Score":68.35443037974683,"New_Score":60.822784810126585,"Earnings_Date":"2026-06-03","Delta":0.38},{"Ticker":"RIVN","EPS_TTM":-2.92,"EPS_Percentile":10.126582278481013,"EPS_Growth":8.178082191780822,"Inst_Accumulation":1.69,"Alpha_63D":-0.13320749908480836,"Beta":1.61,"RSI":43.93,"SMA200_Dist":-4.28,"MA_Slope":-0.006102937885637886,"Volume_Expansion":false,"Net_Inst":26,"RS_vs_SP100":-0.06854302887484698,"Return_63D":4.821429933820452,"RS_Rank":49.36708860759494,"Drawdown_%":38.84187494148391,"Old_Score":36.32911392405064,"New_Score":29.36708860759494,"Earnings_Date":"2026-04-30","Delta":-0.38},{"Ticker":"MSFT","EPS_TTM":16.79,"EPS_Percentile":88.60759493670885,"EPS_Growth":-0.05777248362120303,"Inst_Accumulation":0.37,"Alpha_63D":-0.10754673419165842,"Beta":1.09,"RSI":50.21,"SMA200_Dist":-11.71,"MA_Slope":0.0024125422671207788,"Volume_Expansion":false,"Net_Inst":84,"RS_vs_SP100":-0.09800607465248379,"Return_63D":1.8751253560567682,"RS_Rank":43.037974683544306,"Drawdown_%":26.894390179645494,"Old_Score":49.62025316455696,"New_Score":39.9367088607595,"Earnings_Date":"2026-04-29","Delta":0.38},{"Ticker":"GOOGL","EPS_TTM":13.11,"EPS_Percentile":84.81012658227847,"EPS_Growth":-0.6453089244851258,"Inst_Accumulation":0.58,"Alpha_63D":0.15231508251016168,"Beta":1.26,"RSI":75.21,"SMA200_Dist":38.55,"MA_Slope":0.02781949782545467,"Volume_Expansion":false,"Net_Inst":151,"RS_vs_SP100":0.17987698784555506,"Return_63D":29.66343160586064,"RS_Rank":77.21518987341773,"Drawdown_%":20.42247430615109,"Old_Score":61.39240506329114,"New_Score":51.139240506329116,"Earnings_Date":"2026-04-29","Delta":0.89},{"Ticker":"DPZ","EPS_TTM":17.37,"EPS_Percentile":91.13924050632912,"EPS_Growth":-0.47898675877950486,"Inst_Accumulation":-0.96,"Alpha_63D":-0.3181429691881079,"Beta":1,"RSI":26.9,"SMA200_Dist":-25.05,"MA_Slope":-0.024684340384122497,"Volume_Expansion":false,"Net_Inst":44,"RS_vs_SP100":-0.3181429691881079,"Return_63D":-20.138564097505654,"RS_Rank":6.329113924050633,"Drawdown_%":30.4559601123391,"Old_Score":32.911392405063296,"New_Score":21.582278481012658,"Earnings_Date":"2026-04-27","Delta":-0.38},{"Ticker":"CEG","EPS_TTM":11.51,"EPS_Percentile":82.27848101265823,"EPS_Growth":0.38488271068635965,"Inst_Accumulation":-0.97,"Alpha_63D":-0.13120568027183452,"Beta":1.12,"RSI":38.9,"SMA200_Dist":-15.19,"MA_Slope":-0.011964198390205084,"Volume_Expansion":true,"Net_Inst":-19,"RS_vs_SP100":-0.11848480088626834,"Return_63D":-0.17274726732169896,"RS_Rank":40.50632911392405,"Drawdown_%":32.54334537649318,"Old_Score":39.99999999999999,"New_Score":34.30379746835443,"Earnings_Date":"2026-05-11","Delta":0.63},{"Ticker":"PYPL","EPS_TTM":5.33,"EPS_Percentile":63.29113924050633,"EPS_Growth":0.598499061913696,"Inst_Accumulation":0.52,"Alpha_63D":-0.0008221176373724437,"Beta":1.38,"RSI":38.49,"SMA200_Dist":-21.87,"MA_Slope":-0.0017925280106526717,"Volume_Expansion":false,"Net_Inst":-134,"RS_vs_SP100":0.039460667083587087,"Return_63D":15.621799529663857,"RS_Rank":62.0253164556962,"Drawdown_%":36.27914452259746,"Old_Score":39.11392405063292,"New_Score":38.797468354430386,"Earnings_Date":"2026-05-05","Delta":0},{"Ticker":"CRWD","EPS_TTM":-0.74,"EPS_Percentile":16.455696202531644,"EPS_Growth":36.648648648648646,"Inst_Accumulation":-0.1,"Alpha_63D":0.27827678266224054,"Beta":1.1,"RSI":81.02,"SMA200_Dist":26.02,"MA_Slope":0.038804206935551595,"Volume_Expansion":false,"Net_Inst":-13,"RS_vs_SP100":0.2888775154835457,"Return_63D":40.56348436965971,"RS_Rank":86.07594936708861,"Drawdown_%":28.305323956526895,"Old_Score":64.55696202531647,"New_Score":53.92405063291139,"Earnings_Date":"2026-06-03","Delta":0},{"Ticker":"PERI","EPS_TTM":-0.18,"EPS_Percentile":22.78481012658228,"EPS_Growth":100,"Inst_Accumulation":-7.97,"Alpha_63D":0.09070062691011735,"Beta":1.3,"RSI":51.1,"SMA200_Dist":9.01,"MA_Slope":0.01990433112361712,"Volume_Expansion":true,"Net_Inst":-14,"RS_vs_SP100":0.12250282537403279,"Return_63D":23.92601535870843,"RS_Rank":69.62025316455697,"Drawdown_%":18.299999237060547,"Old_Score":57.46835443037974,"New_Score":53.41772151898734,"Earnings_Date":"2026-05-20","Delta":0},{"Ticker":"BLSH","EPS_TTM":-4.08,"EPS_Percentile":5.063291139240507,"EPS_Growth":16.730392156862745,"Inst_Accumulation":12.27,"Alpha_63D":0.2721261109960245,"Beta":0,"RSI":49.27,"SMA200_Dist":-10.63,"MA_Slope":0.02361688973368183,"Volume_Expansion":true,"Net_Inst":39,"RS_vs_SP100":0.1661187827829731,"Return_63D":28.28761109960246,"RS_Rank":74.68354430379746,"Drawdown_%":45.29877115964868,"Old_Score":45.18987341772152,"New_Score":40.75949367088608,"Earnings_Date":"2026-05-14","Delta":-1.14},{"Ticker":"MBLY","EPS_TTM":-5.03,"EPS_Percentile":3.79746835443038,"EPS_Growth":7.34990059642147,"Inst_Accumulation":-1.75,"Alpha_63D":-0.012992593659218676,"Beta":1.11,"RSI":76.88,"SMA200_Dist":-5.99,"MA_Slope":0.016911260218543354,"Volume_Expansion":false,"Net_Inst":5,"RS_vs_SP100":-0.001331787555783004,"Return_63D":11.542554065726831,"RS_Rank":56.9620253164557,"Drawdown_%":46.4052282234621,"Old_Score":44.30379746835443,"New_Score":30.063291139240505,"Earnings_Date":"2026-04-23","Delta":0},{"Ticker":"CMS","EPS_TTM":3.61,"EPS_Percentile":53.16455696202531,"EPS_Growth":1.0831024930747921,"Inst_Accumulation":-0.1,"Alpha_63D":-0.07152608902469655,"Beta":0.36,"RSI":37.51,"SMA200_Dist":-0.72,"MA_Slope":-0.006280195480516437,"Volume_Expansion":false,"Net_Inst":34,"RS_vs_SP100":-0.13937077908104945,"Return_63D":-2.2613450867998,"RS_Rank":36.708860759493675,"Drawdown_%":9.169379043273572,"Old_Score":42.15189873417721,"New_Score":38.54430379746835,"Earnings_Date":"2026-04-28","Delta":0},{"Ticker":"IOT","EPS_TTM":-0.02,"EPS_Percentile":27.848101265822784,"EPS_Growth":1214,"Inst_Accumulation":5.23,"Alpha_63D":-0.10300963463207322,"Beta":1.27,"RSI":42.05,"SMA200_Dist":-18.73,"MA_Slope":-0.0015476646793928285,"Volume_Expansion":false,"Net_Inst":6,"RS_vs_SP100":-0.07438765601454933,"Return_63D":4.236967219850214,"RS_Rank":48.10126582278481,"Drawdown_%":38.87068031431492,"Old_Score":49.87341772151898,"New_Score":42.151898734177216,"Earnings_Date":"2026-06-04","Delta":-0.38},{"Ticker":"SHOP","EPS_TTM":1.02,"EPS_Percentile":41.77215189873418,"EPS_Growth":26.862745098039216,"Inst_Accumulation":-1.51,"Alpha_63D":-0.4179675723306637,"Beta":2.59,"RSI":32.04,"SMA200_Dist":-31.9,"MA_Slope":-0.018572838403102806,"Volume_Expansion":true,"Net_Inst":-18,"RS_vs_SP100":-0.24941592047191197,"Return_63D":-13.265859225886054,"RS_Rank":13.924050632911392,"Drawdown_%":44.155007607957295,"Old_Score":38.60759493670886,"New_Score":26.518987341772146,"Earnings_Date":"2026-05-05","Delta":0},{"Ticker":"AMZN","EPS_TTM":8.37,"EPS_Percentile":73.41772151898735,"EPS_Growth":0.818399044205496,"Inst_Accumulation":0.94,"Alpha_63D":0.1791686078688256,"Beta":1.46,"RSI":65.55,"SMA200_Dist":17.34,"MA_Slope":0.025585314395313728,"Volume_Expansion":false,"Net_Inst":162,"RS_vs_SP100":0.22793197884682925,"Return_63D":34.468930705988065,"RS_Rank":82.27848101265823,"Drawdown_%":19.641850851970627,"Old_Score":62.27848101265823,"New_Score":56.962025316455694,"Earnings_Date":"2026-04-29","Delta":0},{"Ticker":"UUUU","EPS_TTM":-0.3,"EPS_Percentile":21.518987341772153,"EPS_Growth":543.5000000000001,"Inst_Accumulation":-0.94,"Alpha_63D":-0.25626706372444663,"Beta":1.51,"RSI":44.66,"SMA200_Dist":11.33,"MA_Slope":-0.0062409394148189405,"Volume_Expansion":false,"Net_Inst":34,"RS_vs_SP100":-0.2022033263357904,"Return_63D":-8.544599812273905,"RS_Rank":22.78481012658228,"Drawdown_%":40.6204924523832,"Old_Score":51.139240506329116,"New_Score":31.39240506329114,"Earnings_Date":"2026-05-06","Delta":-0.63},{"Ticker":"IDCC","EPS_TTM":10.62,"EPS_Percentile":81.0126582278481,"EPS_Growth":0.8549905838041432,"Inst_Accumulation":-4.11,"Alpha_63D":-0.4152563242428725,"Beta":1.47,"RSI":29.08,"SMA200_Dist":-19.09,"MA_Slope":-0.029842556362938727,"Volume_Expansion":false,"Net_Inst":17,"RS_vs_SP100":-0.3654328799827383,"Return_63D":-24.867555176968693,"RS_Rank":3.79746835443038,"Drawdown_%":29.26623910493363,"Old_Score":38.607594936708864,"New_Score":25.759493670886073,"Earnings_Date":"2026-04-30","Delta":-0.13},{"Ticker":"VRT","EPS_TTM":3.98,"EPS_Percentile":54.43037974683544,"EPS_Growth":7.505025125628141,"Inst_Accumulation":-1.16,"Alpha_63D":0.3550663954606283,"Beta":2.1,"RSI":71.5,"SMA200_Dist":85.05,"MA_Slope":0.039067879528610155,"Volume_Expansion":false,"Net_Inst":285,"RS_vs_SP100":0.47167445649498485,"Return_63D":58.84317847080362,"RS_Rank":89.87341772151899,"Drawdown_%":15.18684888660459,"Old_Score":69.87341772151898,"New_Score":63.037974683544306,"Earnings_Date":"2026-04-22","Delta":0},{"Ticker":"BE","EPS_TTM":-0.06,"EPS_Percentile":26.582278481012654,"EPS_Growth":1710.0000000000002,"Inst_Accumulation":2.02,"Alpha_63D":0.7888246191322793,"Beta":3.8,"RSI":70.19,"SMA200_Dist":141.75,"MA_Slope":0.06629949146826043,"Volume_Expansion":false,"Net_Inst":246,"RS_vs_SP100":1.0856451381288232,"Return_63D":120.24024663418746,"RS_Rank":97.46835443037975,"Drawdown_%":31.61869931071345,"Old_Score":74.55696202531647,"New_Score":63.544303797468345,"Earnings_Date":"2026-04-28","Delta":0.38},{"Ticker":"SMRT","EPS_TTM":-0.13,"EPS_Percentile":25.31645569620253,"EPS_Growth":385.61538461538464,"Inst_Accumulation":2.75,"Alpha_63D":-0.436916409525831,"Beta":1.53,"RSI":39.39,"SMA200_Dist":-23.32,"MA_Slope":-0.030364906654603615,"Volume_Expansion":true,"Net_Inst":7,"RS_vs_SP100":-0.3807325255729137,"Return_63D":-26.397519735986226,"RS_Rank":2.5316455696202533,"Drawdown_%":47.64150593279924,"Old_Score":39.24050632911393,"New_Score":21.77215189873418,"Earnings_Date":"2026-05-06","Delta":0},{"Ticker":"USAR","EPS_TTM":-3.88,"EPS_Percentile":7.59493670886076,"EPS_Growth":-6.131443298969073,"Inst_Accumulation":17.05,"Alpha_63D":0.06505664660412691,"Beta":2.37,"RSI":56.45,"SMA200_Dist":34.3,"MA_Slope":0.03187932043656487,"Volume_Expansion":false,"Net_Inst":95,"RS_vs_SP100":0.21028668625600733,"Return_63D":32.704401446905884,"RS_Rank":81.0126582278481,"Drawdown_%":46.744012320672994,"Old_Score":33.67088607594937,"New_Score":26.64556962025317,"Earnings_Date":"2026-05-13","Delta":0},{"Ticker":"LRCX","EPS_TTM":5.3,"EPS_Percentile":62.0253164556962,"EPS_Growth":6.496226415094339,"Inst_Accumulation":0.22,"Alpha_63D":0.09175586852112316,"Beta":1.83,"RSI":66.21,"SMA200_Dist":64.37,"MA_Slope":0.027550206758726836,"Volume_Expansion":false,"Net_Inst":269,"RS_vs_SP100":0.17974195093795586,"Return_63D":29.649927915100726,"RS_Rank":75.9493670886076,"Drawdown_%":20.10180966623631,"Old_Score":67.21518987341773,"New_Score":56.77215189873419,"Earnings_Date":"2026-04-22","Delta":0},{"Ticker":"QS","EPS_TTM":-0.71,"EPS_Percentile":17.72151898734177,"EPS_Growth":12.042253521126762,"Inst_Accumulation":6.97,"Alpha_63D":-0.1745555804193139,"Beta":2.59,"RSI":69.25,"SMA200_Dist":-14.45,"MA_Slope":0.019469516135453818,"Volume_Expansion":true,"Net_Inst":25,"RS_vs_SP100":-0.0060039285605621995,"Return_63D":11.075339965248917,"RS_Rank":55.69620253164557,"Drawdown_%":48.21894075039502,"Old_Score":48.734177215189874,"New_Score":35.12658227848102,"Earnings_Date":"2026-04-22","Delta":-0.76},{"Ticker":"P","EPS_TTM":0.54,"EPS_Percentile":35.44303797468354,"EPS_Growth":41.629629629629626,"Inst_Accumulation":-0.44,"Alpha_63D":-0.00014858383710547596,"Beta":1.46,"RSI":66.62,"SMA200_Dist":11.42,"MA_Slope":0.029728045222307847,"Volume_Expansion":true,"Net_Inst":21,"RS_vs_SP100":0.048614787140898175,"Return_63D":16.53721153539496,"RS_Rank":64.55696202531645,"Drawdown_%":25.062459708672506,"Old_Score":65.69620253164557,"New_Score":52.65822784810126,"Earnings_Date":"2026-05-27","Delta":0},{"Ticker":"BAC","EPS_TTM":4.03,"EPS_Percentile":56.9620253164557,"EPS_Growth":2.2580645161290325,"Inst_Accumulation":-0.7,"Alpha_63D":-0.18622611726230834,"Beta":1.2,"RSI":39.05,"SMA200_Dist":-3.12,"MA_Slope":0.0001009254578829784,"Volume_Expansion":false,"Net_Inst":10,"RS_vs_SP100":-0.16502465161969804,"Return_63D":-4.826732340664665,"RS_Rank":27.848101265822784,"Drawdown_%":18.39301096820415,"Old_Score":47.21518987341773,"New_Score":36.582278481012665,"Earnings_Date":"2026-04-15","Delta":0.38},{"Ticker":"JNJ","EPS_TTM":8.65,"EPS_Percentile":74.68354430379746,"EPS_Growth":0.1757225433526011,"Inst_Accumulation":0.84,"Alpha_63D":-0.09903570790419841,"Beta":0.26,"RSI":51.35,"SMA200_Dist":10.14,"MA_Slope":-0.008898279015999048,"Volume_Expansion":false,"Net_Inst":199,"RS_vs_SP100":-0.17748113078185646,"Return_63D":-6.07238025688051,"RS_Rank":25.31645569620253,"Drawdown_%":10.95912073621325,"Old_Score":45.063291139240505,"New_Score":33.98734177215189,"Earnings_Date":"2027-04-14","Delta":0.13},{"Ticker":"MU","EPS_TTM":21.18,"EPS_Percentile":96.20253164556962,"EPS_Growth":2.31067044381492,"Inst_Accumulation":0.39,"Alpha_63D":0.6840401434964034,"Beta":2,"RSI":79.04,"SMA200_Dist":160.72,"MA_Slope":0.08503248308634306,"Volume_Expansion":true,"Net_Inst":409,"RS_vs_SP100":0.7900474717094548,"Return_63D":90.68047999225062,"RS_Rank":93.67088607594937,"Drawdown_%":30.30559414893712,"Old_Score":81.51898734177216,"New_Score":67.34177215189874,"Earnings_Date":"2027-03-18","Delta":0.25},{"Ticker":"CAT","EPS_TTM":20.1,"EPS_Percentile":94.9367088607595,"EPS_Growth":0.09701492537313429,"Inst_Accumulation":-1.9,"Alpha_63D":0.021818608106908055,"Beta":1.62,"RSI":65.53,"SMA200_Dist":49.13,"MA_Slope":0.02231951880965812,"Volume_Expansion":false,"Net_Inst":315,"RS_vs_SP100":0.08754315159899995,"Return_63D":20.430047981205142,"RS_Rank":67.08860759493672,"Drawdown_%":13.880000945060484,"Old_Score":65.0632911392405,"New_Score":55.31645569620253,"Earnings_Date":"2026-04-30","Delta":0},{"Ticker":"GEV","EPS_TTM":34.32,"EPS_Percentile":100,"EPS_Growth":-1.435897435897436,"Inst_Accumulation":-2.43,"Alpha_63D":0.17401162363333672,"Beta":1.24,"RSI":56.61,"SMA200_Dist":47.17,"MA_Slope":0.02141742119672486,"Volume_Expansion":false,"Net_Inst":374,"RS_vs_SP100":0.19945338240446908,"Return_63D":31.621071061752055,"RS_Rank":79.74683544303798,"Drawdown_%":11.512523311327532,"Old_Score":59.74683544303798,"New_Score":56.582278481012665,"Earnings_Date":"2026-04-22","Delta":0},{"Ticker":"PEP","EPS_TTM":6.37,"EPS_Percentile":68.35443037974683,"EPS_Growth":-0.1255886970172684,"Inst_Accumulation":-0.23,"Alpha_63D":-0.16126001565497908,"Beta":0.38,"RSI":38.08,"SMA200_Dist":-0.86,"MA_Slope":-0.010130946048307181,"Volume_Expansion":false,"Net_Inst":149,"RS_vs_SP100":-0.22698455914707094,"Return_63D":-11.02272309340195,"RS_Rank":20.253164556962027,"Drawdown_%":12.73975043749647,"Old_Score":36.32911392405063,"New_Score":28.79746835443038,"Earnings_Date":"2026-04-16","Delta":0},{"Ticker":"DE","EPS_TTM":17.74,"EPS_Percentile":92.40506329113924,"EPS_Growth":0.6178128523111613,"Inst_Accumulation":-0.38,"Alpha_63D":-0.14291277018514845,"Beta":0.96,"RSI":49.51,"SMA200_Dist":11.77,"MA_Slope":-0.006832330097585761,"Volume_Expansion":false,"Net_Inst":155,"RS_vs_SP100":-0.1471530633136705,"Return_63D":-3.0395735100619077,"RS_Rank":35.44303797468354,"Drawdown_%":16.149676494964734,"Old_Score":54.050632911392405,"New_Score":42.848101265822784,"Earnings_Date":"2026-05-21","Delta":0},{"Ticker":"SNDK","EPS_TTM":28.77,"EPS_Percentile":98.73417721518987,"EPS_Growth":4.831074035453597,"Inst_Accumulation":-8.63,"Alpha_63D":0.702412030848552,"Beta":4.76,"RSI":66.15,"SMA200_Dist":238.33,"MA_Slope":0.1058386935433432,"Volume_Expansion":false,"Net_Inst":413,"RS_vs_SP100":1.1009995849296252,"Return_63D":121.77569131426769,"RS_Rank":98.73417721518987,"Drawdown_%":25.85061584959845,"Old_Score":82.27848101265823,"New_Score":72.34177215189874,"Earnings_Date":"2026-04-30","Delta":0},{"Ticker":"STX","EPS_TTM":10.54,"EPS_Percentile":79.74683544303798,"EPS_Growth":6.3927893738140416,"Inst_Accumulation":-4.36,"Alpha_63D":0.6347132974900617,"Beta":2.03,"RSI":75.15,"SMA200_Dist":139.96,"MA_Slope":0.0865727164624305,"Volume_Expansion":false,"Net_Inst":184,"RS_vs_SP100":0.7439008455495046,"Return_63D":86.06581737625561,"RS_Rank":92.40506329113924,"Drawdown_%":20.9978319173529,"Old_Score":77.84810126582278,"New_Score":66.96202531645571,"Earnings_Date":"2026-04-28","Delta":0},{"Ticker":"VRTX","EPS_TTM":16.87,"EPS_Percentile":89.87341772151899,"EPS_Growth":-0.2691167753408418,"Inst_Accumulation":-0.69,"Alpha_63D":-0.07677209987055884,"Beta":0.31,"RSI":59.81,"SMA200_Dist":3.83,"MA_Slope":-0.008871724521789534,"Volume_Expansion":false,"Net_Inst":71,"RS_vs_SP100":-0.1499171563375643,"Return_63D":-3.315982812451293,"RS_Rank":32.91139240506329,"Drawdown_%":15.211254913322609,"Old_Score":48.22784810126582,"New_Score":37.40506329113924,"Earnings_Date":"2026-05-04","Delta":-0.38},{"Ticker":"INTU","EPS_TTM":15.41,"EPS_Percentile":87.34177215189874,"EPS_Growth":-0.10837118754055808,"Inst_Accumulation":-0.19,"Alpha_63D":-0.16453528787485666,"Beta":1.02,"RSI":43.81,"SMA200_Dist":-33.37,"MA_Slope":-0.008021649911025294,"Volume_Expansion":false,"Net_Inst":-153,"RS_vs_SP100":-0.16241514131059565,"Return_63D":-4.5657813097544215,"RS_Rank":29.11392405063291,"Drawdown_%":48.12800106814908,"Old_Score":40.75949367088607,"New_Score":29.050632911392405,"Earnings_Date":"2026-05-20","Delta":-0.38},{"Ticker":"UBER","EPS_TTM":4.01,"EPS_Percentile":55.69620253164557,"EPS_Growth":7.0074812967581055,"Inst_Accumulation":-0.9,"Alpha_63D":-0.08084571247327066,"Beta":1.15,"RSI":48.91,"SMA200_Dist":-11.66,"MA_Slope":-0.00043359092444813775,"Volume_Expansion":false,"Net_Inst":-32,"RS_vs_SP100":-0.06494461324131295,"Return_63D":5.181271497173847,"RS_Rank":50.63291139240506,"Drawdown_%":21.01837744312229,"Old_Score":50.12658227848102,"New_Score":44.11392405063291,"Earnings_Date":"2026-05-06","Delta":0.76},{"Ticker":"GILD","EPS_TTM":7.35,"EPS_Percentile":69.62025316455697,"EPS_Growth":84.9795918367347,"Inst_Accumulation":0.3,"Alpha_63D":-0.17464350704065426,"Beta":0.33,"RSI":45.64,"SMA200_Dist":3.9,"MA_Slope":-0.010596519517794166,"Volume_Expansion":false,"Net_Inst":132,"RS_vs_SP100":-0.2456684169433987,"Return_63D":-12.891108873034732,"RS_Rank":17.72151898734177,"Drawdown_%":18.003852697255347,"Old_Score":60.37974683544305,"New_Score":44.936708860759495,"Earnings_Date":"2026-05-07","Delta":0.38},{"Ticker":"ISRG","EPS_TTM":8.24,"EPS_Percentile":72.15189873417721,"EPS_Growth":0.6286407766990291,"Inst_Accumulation":-0.07,"Alpha_63D":-0.27315144163343014,"Beta":1.49,"RSI":36.26,"SMA200_Dist":-13.82,"MA_Slope":-0.014530824507100982,"Volume_Expansion":false,"Net_Inst":-11,"RS_vs_SP100":-0.22120785080903493,"Return_63D":-10.445052259598356,"RS_Rank":21.518987341772153,"Drawdown_%":29.145649851223904,"Old_Score":36.708860759493675,"New_Score":27.72151898734177,"Earnings_Date":"2026-04-21","Delta":0.13},{"Ticker":"TMO","EPS_TTM":18.19,"EPS_Percentile":93.67088607594937,"EPS_Growth":-0.47663551401869164,"Inst_Accumulation":1.57,"Alpha_63D":-0.21780123079606967,"Beta":0.87,"RSI":37.59,"SMA200_Dist":-14.56,"MA_Slope":-0.012052150714678567,"Volume_Expansion":true,"Net_Inst":-34,"RS_vs_SP100":-0.23158218346376636,"Return_63D":-11.4824855250715,"RS_Rank":18.9873417721519,"Drawdown_%":30.247870785107096,"Old_Score":38.481012658227854,"New_Score":27.72151898734177,"Earnings_Date":"2026-04-23","Delta":0.13},{"Ticker":"NKE","EPS_TTM":1.52,"EPS_Percentile":45.56962025316456,"EPS_Growth":13.532894736842104,"Inst_Accumulation":-0.78,"Alpha_63D":-0.43529043335779305,"Beta":1.11,"RSI":31.64,"SMA200_Dist":-32.43,"MA_Slope":-0.036819047674802624,"Volume_Expansion":false,"Net_Inst":-65,"RS_vs_SP100":-0.4236296272543574,"Return_63D":-30.687229904130596,"RS_Rank":1.2658227848101267,"Drawdown_%":37.53319428279413,"Old_Score":35.822784810126585,"New_Score":21.835443037974688,"Earnings_Date":"2027-03-31","Delta":0},{"Ticker":"MMM","EPS_TTM":5.18,"EPS_Percentile":60.75949367088608,"EPS_Growth":0.7837837837837839,"Inst_Accumulation":0.16,"Alpha_63D":-0.2817255110945516,"Beta":1.01,"RSI":50.24,"SMA200_Dist":-7.12,"MA_Slope":-0.011991913113487167,"Volume_Expansion":false,"Net_Inst":-20,"RS_vs_SP100":-0.28066543781242104,"Return_63D":-16.39081095993696,"RS_Rank":11.39240506329114,"Drawdown_%":19.13407224404345,"Old_Score":40.126582278481,"New_Score":26.202531645569618,"Earnings_Date":"2026-04-21","Delta":-0.13},{"Ticker":"SHW","EPS_TTM":10.42,"EPS_Percentile":78.48101265822784,"EPS_Growth":0.21305182341650677,"Inst_Accumulation":-1.31,"Alpha_63D":-0.30054631759780803,"Beta":1.14,"RSI":39.88,"SMA200_Dist":-9.12,"MA_Slope":-0.013340396526671216,"Volume_Expansion":false,"Net_Inst":55,"RS_vs_SP100":-0.28570529164798086,"Return_63D":-16.894796343492946,"RS_Rank":10.126582278481013,"Drawdown_%":18.537307083411516,"Old_Score":39.24050632911392,"New_Score":27.468354430379748,"Earnings_Date":"2026-04-28","Delta":0},{"Ticker":"ATEN","EPS_TTM":0.61,"EPS_Percentile":36.708860759493675,"EPS_Growth":22.40983606557377,"Inst_Accumulation":0.1,"Alpha_63D":0.2318061407146457,"Beta":1.17,"RSI":61.8,"SMA200_Dist":41.61,"MA_Slope":0.03293282383472466,"Volume_Expansion":false,"Net_Inst":10,"RS_vs_SP100":0.24982738651086445,"Return_63D":36.658471472391575,"RS_Rank":83.54430379746836,"Drawdown_%":9.507882188735834,"Old_Score":65.56962025316456,"New_Score":61.0126582278481,"Earnings_Date":"2026-04-28","Delta":0},{"Ticker":"WSR","EPS_TTM":0.96,"EPS_Percentile":39.24050632911392,"EPS_Growth":14.25,"Inst_Accumulation":2.01,"Alpha_63D":0.171837599993916,"Beta":0.79,"RSI":83.02,"SMA200_Dist":32.23,"MA_Slope":0.021742148422753137,"Volume_Expansion":false,"Net_Inst":15,"RS_vs_SP100":0.1495760610691752,"Return_63D":26.633338928222656,"RS_Rank":72.15189873417721,"Drawdown_%":3.6747023875523213,"Old_Score":65.0632911392405,"New_Score":56.32911392405063,"Earnings_Date":"2027-02-25","Delta":0},{"Ticker":"OMCL","EPS_TTM":0.44,"EPS_Percentile":34.177215189873415,"EPS_Growth":29.204545454545453,"Inst_Accumulation":-0.71,"Alpha_63D":0.0822037529066603,"Beta":0.96,"RSI":60.47,"SMA200_Dist":14.82,"MA_Slope":0.00564206762993544,"Volume_Expansion":false,"Net_Inst":6,"RS_vs_SP100":0.07796345977813823,"Return_63D":19.47207879911897,"RS_Rank":65.82278481012658,"Drawdown_%":37.05001195108517,"Old_Score":58.10126582278481,"New_Score":46.45569620253164,"Earnings_Date":"2026-04-28","Delta":0},{"Ticker":"MD","EPS_TTM":2.05,"EPS_Percentile":48.10126582278481,"EPS_Growth":0.7170731707317075,"Inst_Accumulation":2.63,"Alpha_63D":0.036085675669937756,"Beta":0.72,"RSI":58.72,"SMA200_Dist":18.77,"MA_Slope":0.018217078308452244,"Volume_Expansion":false,"Net_Inst":6,"RS_vs_SP100":0.006403623770283362,"Return_63D":12.316095198333482,"RS_Rank":58.22784810126582,"Drawdown_%":17.05597509098574,"Old_Score":50.253164556962034,"New_Score":42.21518987341772,"Earnings_Date":"2026-05-05","Delta":0.76},{"Ticker":"SHO","EPS_TTM":0.12,"EPS_Percentile":31.645569620253166,"EPS_Growth":281.33333333333337,"Inst_Accumulation":-0.34,"Alpha_63D":0.01240752414840536,"Beta":0.98,"RSI":66.79,"SMA200_Dist":11.55,"MA_Slope":0.008247007365014443,"Volume_Expansion":false,"Net_Inst":2,"RS_vs_SP100":0.01028737758414433,"Return_63D":12.70447057971958,"RS_Rank":59.49367088607595,"Drawdown_%":8.54788795515236,"Old_Score":62.91139240506329,"New_Score":54.43037974683545,"Earnings_Date":"2026-05-05","Delta":0},{"Ticker":"GOOG","EPS_TTM":13.11,"EPS_Percentile":84.81012658227847,"EPS_Growth":-0.6414950419527079,"Inst_Accumulation":0.57,"Alpha_63D":0.13799643285872165,"Beta":1.26,"RSI":74.84,"SMA200_Dist":37.38,"MA_Slope":0.02693996293552387,"Volume_Expansion":false,"Net_Inst":144,"RS_vs_SP100":0.16555833819411503,"Return_63D":28.23156664071665,"RS_Rank":73.41772151898735,"Drawdown_%":20.806025084936465,"Old_Score":60.50632911392405,"New_Score":49.683544303797476,"Earnings_Date":"2026-04-29","Delta":0},{"Ticker":"CSCO","EPS_TTM":3.07,"EPS_Percentile":50.63291139240506,"EPS_Growth":2.4527687296416936,"Inst_Accumulation":0.82,"Alpha_63D":0.4238631562787893,"Beta":0.93,"RSI":87.31,"SMA200_Dist":50.65,"MA_Slope":0.0276716970655234,"Volume_Expansion":true,"Net_Inst":130,"RS_vs_SP100":0.4164426433038757,"Return_63D":53.31999715169271,"RS_Rank":87.34177215189874,"Drawdown_%":13.574555133673535,"Old_Score":64.55696202531645,"New_Score":58.037974683544306,"Earnings_Date":"2026-05-13","Delta":-0.13},{"Ticker":"DELL","EPS_TTM":8.72,"EPS_Percentile":75.9493670886076,"EPS_Growth":0.8119266055045871,"Inst_Accumulation":5.52,"Alpha_63D":1.0587470216818125,"Beta":1.01,"RSI":66.13,"SMA200_Dist":67.76,"MA_Slope":0.0584419134804722,"Volume_Expansion":true,"Net_Inst":141,"RS_vs_SP100":1.0598070949639429,"Return_63D":117.65644231769943,"RS_Rank":96.20253164556962,"Drawdown_%":16.957009573963198,"Old_Score":68.60759493670886,"New_Score":64.24050632911393,"Earnings_Date":"2026-05-28","Delta":-0.38}],"pf":["XOM","AMD","SNOW","TSLA","NFLX","NVDA","UNH","PLTR","DIS","S","GTLB","UROY","OKTA","INTC","NTLA","CRSP","ALHC","BIIB","BIO","ENPH","GE","META","MSTR","SMR","IONQ","JOBY","ACHR","SOFI","BA","AVGO","RIVN","MSFT","GOOGL","DPZ","CEG","PYPL","CRWD","PERI","BLSH","MBLY","CMS","IOT","SHOP","AMZN","UUUU","IDCC"],"wl":["VRT","BE","SMRT","USAR","LRCX","QS","P","BAC","JNJ","MU","CAT","GEV","PEP","DE","SNDK","STX","VRTX","INTU","UBER","GILD","ISRG","TMO","NKE","MMM","SHW"],"signals":[{"ticker":"SNDK","score":72.34177215189874,"triggers":"Momentum Breakout, Multi-Day Breakout, Market Leader, Institutional Buying"},{"ticker":"MU","score":67.34177215189874,"triggers":"Momentum Breakout, Market Leader, Volume Spike, Institutional Buying"},{"ticker":"STX","score":66.96202531645571,"triggers":"Momentum Breakout, Market Leader, Institutional Buying"},{"ticker":"AMD","score":64.9367088607595,"triggers":"Momentum Breakout, Market Leader, Institutional Buying"},{"ticker":"DELL","score":64.24050632911393,"triggers":"Momentum Breakout, Market Leader, Volume Spike, Institutional Buying"},{"ticker":"BE","score":63.544303797468345,"triggers":"Momentum Breakout, Market Leader, Institutional Buying"},{"ticker":"VRT","score":63.037974683544306,"triggers":"Momentum Breakout, Market Leader, Institutional Buying"},{"ticker":"INTC","score":61.962025316455694,"triggers":"Momentum Breakout, Market Leader, Institutional Buying"},{"ticker":"ATEN","score":61.0126582278481,"triggers":"Momentum Breakout, Stable Uptrend, Institutional Buying"},{"ticker":"AVGO","score":60.822784810126585,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"CSCO","score":58.037974683544306,"triggers":"Momentum Breakout, Market Leader, Volume Spike, Institutional Buying"},{"ticker":"AMZN","score":56.962025316455694,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"LRCX","score":56.77215189873419,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"GEV","score":56.582278481012665,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"WSR","score":56.32911392405063,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"CAT","score":55.31645569620253,"triggers":"Institutional Buying"},{"ticker":"UNH","score":55.316455696202524,"triggers":"Momentum Breakout"},{"ticker":"NVDA","score":54.55696202531646,"triggers":"Momentum Breakout, Earnings Upcoming"},{"ticker":"SHO","score":54.43037974683545,"triggers":"Institutional Buying"},{"ticker":"CRWD","score":53.92405063291139,"triggers":"Momentum Breakout, Market Leader"},{"ticker":"PERI","score":53.41772151898734,"triggers":"Earnings Upcoming, Volume Spike"},{"ticker":"P","score":52.65822784810126,"triggers":"Volume Spike, Institutional Buying"},{"ticker":"GOOGL","score":51.139240506329116,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"GOOG","score":49.683544303797476,"triggers":"Momentum Breakout, Institutional Buying"},{"ticker":"BA","score":47.53164556962025,"triggers":"Volume Spike, Institutional Buying"},{"ticker":"S","score":46.455696202531655,"triggers":"Institutional Buying"},{"ticker":"OMCL","score":46.45569620253164,"triggers":"Institutional Buying"},{"ticker":"TSLA","score":45.31645569620254,"triggers":"Institutional Buying"},{"ticker":"GILD","score":44.936708860759495,"triggers":"Institutional Buying"},{"ticker":"DE","score":42.848101265822784,"triggers":"Earnings Upcoming, Institutional Buying"},{"ticker":"MD","score":42.21518987341772,"triggers":"Institutional Buying"},{"ticker":"IOT","score":42.151898734177216,"triggers":"Institutional Buying"},{"ticker":"NFLX","score":42.08860759493671,"triggers":"Institutional Buying"},{"ticker":"PLTR","score":41.202531645569614,"triggers":"Institutional Buying"},{"ticker":"BIIB","score":40.8860759493671,"triggers":"Volume Spike, Institutional Buying"},{"ticker":"BLSH","score":40.75949367088608,"triggers":"Momentum Breakout, Volume Spike, Institutional Buying"},{"ticker":"MSFT","score":39.9367088607595,"triggers":"Institutional Buying"},{"ticker":"ENPH","score":38.79746835443038,"triggers":"Institutional Buying"},{"ticker":"CMS","score":38.54430379746835,"triggers":"Institutional Buying"},{"ticker":"VRTX","score":37.40506329113924,"triggers":"Institutional Buying"},{"ticker":"NTLA","score":36.64556962025316,"triggers":"Institutional Buying"},{"ticker":"BAC","score":36.582278481012665,"triggers":"Institutional Buying"},{"ticker":"OKTA","score":35.189873417721515,"triggers":"Institutional Buying"},{"ticker":"QS","score":35.12658227848102,"triggers":"Volume Spike, Institutional Buying"},{"ticker":"CEG","score":34.30379746835443,"triggers":"Volume Spike"},{"ticker":"JNJ","score":33.98734177215189,"triggers":"Institutional Buying"},{"ticker":"IONQ","score":33.037974683544306,"triggers":"Momentum Breakout, Market Leader"},{"ticker":"XOM","score":32.84810126582278,"triggers":"Institutional Buying"},{"ticker":"META","score":31.962025316455694,"triggers":"Institutional Buying"},{"ticker":"UUUU","score":31.39240506329114,"triggers":"Institutional Buying"}]};
-const rows = data.rows;
-const pf = new Set(data.pf);
-const wl = new Set(data.wl);
-const signals = data.signals;
+const fbApp = initializeApp({"apiKey":"AIzaSyBrGXWw9A2qp86h5ZMBIv8BgV9Pa6Sj3kw","authDomain":"stocks-analytics-platform.firebaseapp.com","projectId":"stocks-analytics-platform","storageBucket":"stocks-analytics-platform.firebasestorage.app","messagingSenderId":"563385076829","appId":"1:563385076829:web:dabe2dd4eb5955200b51b4"});
+const auth = getAuth(fbApp);
+const provider = new GoogleAuthProvider();
+const db = getFirestore(fbApp);
+const rows = [{"Ticker":"XOM","EPS_TTM":5.93,"EPS_Percentile":62.19512195121951,"EPS_Growth":-1.9156829679595277,"Inst_Accumulation":0.38,"Alpha_63D":-0.17185349042555131,"Beta":0.17,"RSI_14Day":47.66,"SMA200_Dist":3.73,"MA_Slope_50":-0.0070575851771647645,"Volume_Expansion":false,"Net_Inst":260,"RS_vs_SP100":-0.27987453933717266,"Return_63D":-13.897869727497824,"RS_Rank":12.195121951219512,"Drawdown_%":20.65084470171101,"Composite_Score":35,"New_Composite_Score":19.81707317073171,"Earnings_Date":"2027-05-01","Daily_Composite_Score_delta":0.37},{"Ticker":"AMD","EPS_TTM":3.05,"EPS_Percentile":47.5609756097561,"EPS_Growth":24.6688524590164,"Inst_Accumulation":-0.89,"Alpha_63D":1.0033878026434937,"Beta":2.47,"RSI_14Day":51.38,"SMA200_Dist":82.36,"MA_Slope_50":0.050099292119294724,"Volume_Expansion":false,"Net_Inst":141,"RS_vs_SP100":1.1947021904749195,"Return_63D":133.55980325371138,"RS_Rank":96.34146341463415,"Drawdown_%":16.611373293216246,"Composite_Score":71.21951219512195,"New_Composite_Score":67.07317073170731,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":-0.49},{"Ticker":"SNOW","EPS_TTM":-3.51,"EPS_Percentile":7.317073170731707,"EPS_Growth":12.615384615384617,"Inst_Accumulation":-1.61,"Alpha_63D":0.5657925771338723,"Beta":1.34,"RSI_14Day":68.19,"SMA200_Dist":26.14,"MA_Slope_50":0.058133130939881525,"Volume_Expansion":false,"Net_Inst":-84,"RS_vs_SP100":0.6100421634350184,"Return_63D":75.09380054972127,"RS_Rank":89.02439024390245,"Drawdown_%":33.76175725439266,"Composite_Score":60.853658536585364,"New_Composite_Score":48.35365853658537,"Earnings_Date":"2027-05-27","Daily_Composite_Score_delta":0.12},{"Ticker":"TSLA","EPS_TTM":1.09,"EPS_Percentile":39.02439024390244,"EPS_Growth":23.69724770642202,"Inst_Accumulation":-0.89,"Alpha_63D":-0.10954777047798075,"Beta":1.81,"RSI_14Day":47.12,"SMA200_Dist":-5.81,"MA_Slope_50":0.005868989232969138,"Volume_Expansion":false,"Net_Inst":-77,"RS_vs_SP100":-0.0041296384076032755,"Return_63D":13.676620365459119,"RS_Rank":50,"Drawdown_%":19.851960490969105,"Composite_Score":52.92682926829268,"New_Composite_Score":45.975609756097555,"Earnings_Date":"2026-07-22","Daily_Composite_Score_delta":0.12},{"Ticker":"NFLX","EPS_TTM":3.09,"EPS_Percentile":50,"EPS_Growth":1.5016181229773464,"Inst_Accumulation":0.35,"Alpha_63D":-0.44364558631656803,"Beta":1.52,"RSI_14Day":42.93,"SMA200_Dist":-20.78,"MA_Slope_50":-0.020341717977782156,"Volume_Expansion":false,"Net_Inst":106,"RS_vs_SP100":-0.3759697484442269,"Return_63D":-23.507390638203255,"RS_Rank":8.536585365853659,"Drawdown_%":34.223953127673056,"Composite_Score":34.390243902439025,"New_Composite_Score":19.085365853658537,"Earnings_Date":"2026-07-16","Daily_Composite_Score_delta":0.12},{"Ticker":"NVDA","EPS_TTM":6.53,"EPS_Percentile":68.29268292682927,"EPS_Growth":5.234303215926493,"Inst_Accumulation":0,"Alpha_63D":-0.1535761381486347,"Beta":2.22,"RSI_14Day":50.99,"SMA200_Dist":6.64,"MA_Slope_50":-0.0022230000890311823,"Volume_Expansion":false,"Net_Inst":112,"RS_vs_SP100":0.005201789167242454,"Return_63D":14.609763122943683,"RS_Rank":57.3170731707317,"Drawdown_%":18.329517988884657,"Composite_Score":55,"New_Composite_Score":48.41463414634147,"Earnings_Date":"2027-05-20","Daily_Composite_Score_delta":3.17},{"Ticker":"UNH","EPS_TTM":13.24,"EPS_Percentile":86.58536585365853,"EPS_Growth":0.0475830815709969,"Inst_Accumulation":0.56,"Alpha_63D":0.2902886687130756,"Beta":0.63,"RSI_14Day":61.79,"SMA200_Dist":25.7,"MA_Slope_50":0.02022653953774421,"Volume_Expansion":false,"Net_Inst":-199,"RS_vs_SP100":0.2421347071500637,"Return_63D":38.303054921225815,"RS_Rank":84.14634146341463,"Drawdown_%":12.1757720658765,"Composite_Score":65.12195121951218,"New_Composite_Score":59.756097560975604,"Earnings_Date":"2026-07-16","Daily_Composite_Score_delta":-0.49},{"Ticker":"PLTR","EPS_TTM":0.89,"EPS_Percentile":34.146341463414636,"EPS_Growth":47.337078651685395,"Inst_Accumulation":-0.19,"Alpha_63D":-0.3353249578943962,"Beta":1.58,"RSI_14Day":53.56,"SMA200_Dist":-15.96,"MA_Slope_50":-0.011081806795812502,"Volume_Expansion":false,"Net_Inst":-12,"RS_vs_SP100":-0.25984036949832345,"Return_63D":-11.894452743612906,"RS_Rank":13.414634146341465,"Drawdown_%":33.30639201351699,"Composite_Score":47.804878048780495,"New_Composite_Score":27.3780487804878,"Earnings_Date":"2027-05-04","Daily_Composite_Score_delta":-0.73},{"Ticker":"DIS","EPS_TTM":6.25,"EPS_Percentile":65.85365853658537,"EPS_Growth":0.5519999999999999,"Inst_Accumulation":-2.17,"Alpha_63D":-0.18334885229832115,"Beta":1.4,"RSI_14Day":41.41,"SMA200_Dist":-8.82,"MA_Slope_50":-0.006808101843387804,"Volume_Expansion":false,"Net_Inst":-128,"RS_vs_SP100":-0.1312905154734434,"Return_63D":0.9605326588750936,"RS_Rank":31.70731707317073,"Drawdown_%":15.951255967229406,"Composite_Score":40.60975609756098,"New_Composite_Score":35.548780487804876,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":0.61},{"Ticker":"S","EPS_TTM":-0.95,"EPS_Percentile":13.414634146341465,"EPS_Growth":46.22105263157896,"Inst_Accumulation":-1.62,"Alpha_63D":0.2162244559175907,"Beta":0.8,"RSI_14Day":63.97,"SMA200_Dist":15.46,"MA_Slope_50":0.0221892557173387,"Volume_Expansion":false,"Net_Inst":27,"RS_vs_SP100":0.1901952875051518,"Return_63D":33.10911295673462,"RS_Rank":79.26829268292683,"Drawdown_%":21.2185970476566,"Composite_Score":61.463414634146346,"New_Composite_Score":51.64634146341464,"Earnings_Date":"2027-05-28","Daily_Composite_Score_delta":-0.49},{"Ticker":"GTLB","EPS_TTM":-0.15,"EPS_Percentile":23.170731707317074,"EPS_Growth":169,"Inst_Accumulation":2.9,"Alpha_63D":0.23666977808132184,"Beta":0.95,"RSI_14Day":61.44,"SMA200_Dist":-4.79,"MA_Slope_50":0.039829258702801844,"Volume_Expansion":false,"Net_Inst":-55,"RS_vs_SP100":0.2301624859782121,"Return_63D":37.105832804040645,"RS_Rank":82.92682926829268,"Drawdown_%":40.172518102184526,"Composite_Score":63.53658536585367,"New_Composite_Score":52.74390243902439,"Earnings_Date":"2027-06-02","Daily_Composite_Score_delta":-0.37},{"Ticker":"UROY","EPS_TTM":0.02,"EPS_Percentile":28.04878048780488,"EPS_Growth":-1653.5,"Inst_Accumulation":5.58,"Alpha_63D":-0.4428431755859995,"Beta":1.41,"RSI_14Day":33.39,"SMA200_Dist":-30.45,"MA_Slope_50":-0.027832312880565167,"Volume_Expansion":false,"Net_Inst":11,"RS_vs_SP100":-0.3894833803404998,"Return_63D":-24.858753827830533,"RS_Rank":4.878048780487805,"Drawdown_%":40.180582436698245,"Composite_Score":11.95121951219512,"New_Composite_Score":0.7926829268292686,"Earnings_Date":"2027-03-10","Daily_Composite_Score_delta":-0.49},{"Ticker":"OKTA","EPS_TTM":1.38,"EPS_Percentile":41.46341463414634,"EPS_Growth":6.797101449275362,"Inst_Accumulation":4.52,"Alpha_63D":0.738924405001931,"Beta":0.77,"RSI_14Day":75.17,"SMA200_Dist":63.63,"MA_Slope_50":0.06882268368704059,"Volume_Expansion":false,"Net_Inst":18,"RS_vs_SP100":0.7089908613276263,"Return_63D":84.98867033898208,"RS_Rank":92.6829268292683,"Drawdown_%":28.85245621658959,"Composite_Score":68.53658536585365,"New_Composite_Score":55.914634146341456,"Earnings_Date":"2027-05-28","Daily_Composite_Score_delta":0.67},{"Ticker":"INTC","EPS_TTM":-0.63,"EPS_Percentile":17.073170731707318,"EPS_Growth":73.76190476190477,"Inst_Accumulation":1.54,"Alpha_63D":0.785165738214582,"Beta":2.21,"RSI_14Day":43.25,"SMA200_Dist":78.83,"MA_Slope_50":0.043872047061708615,"Volume_Expansion":false,"Net_Inst":229,"RS_vs_SP100":0.9426422071098373,"Return_63D":108.35380491720319,"RS_Rank":95.1219512195122,"Drawdown_%":23.3853551464226,"Composite_Score":60.731707317073166,"New_Composite_Score":58.41463414634147,"Earnings_Date":"2026-07-23","Daily_Composite_Score_delta":0},{"Ticker":"NTLA","EPS_TTM":-3.53,"EPS_Percentile":6.097560975609756,"EPS_Growth":13.6657223796034,"Inst_Accumulation":4.82,"Alpha_63D":0.0003948229404939496,"Beta":1.78,"RSI_14Day":60.48,"SMA200_Dist":22.58,"MA_Slope_50":0.014737698494749487,"Volume_Expansion":false,"Net_Inst":19,"RS_vs_SP100":0.10190857974900558,"Return_63D":24.280442181119994,"RS_Rank":73.17073170731707,"Drawdown_%":27.942065176302556,"Composite_Score":54.51219512195122,"New_Composite_Score":43.23170731707317,"Earnings_Date":"2027-05-11","Daily_Composite_Score_delta":-1.34},{"Ticker":"CRSP","EPS_TTM":-6.21,"EPS_Percentile":3.6585365853658534,"EPS_Growth":4.764895330112721,"Inst_Accumulation":0.76,"Alpha_63D":-0.04345396999352347,"Beta":1.72,"RSI_14Day":60.56,"SMA200_Dist":6.55,"MA_Slope_50":0.009091238296839556,"Volume_Expansion":false,"Net_Inst":26,"RS_vs_SP100":0.05025103629125649,"Return_63D":19.11468783534508,"RS_Rank":65.85365853658537,"Drawdown_%":28.182703357372183,"Composite_Score":42.19512195121952,"New_Composite_Score":33.170731707317074,"Earnings_Date":"2027-05-04","Daily_Composite_Score_delta":0.12},{"Ticker":"ALHC","EPS_TTM":0.09,"EPS_Percentile":29.268292682926827,"EPS_Growth":1387.3333333333335,"Inst_Accumulation":5.95,"Alpha_63D":-0.22525993707531228,"Beta":1.07,"RSI_14Day":45.2,"SMA200_Dist":4.89,"MA_Slope_50":0.010967547899909216,"Volume_Expansion":false,"Net_Inst":37,"RS_vs_SP100":-0.21614972813095867,"Return_63D":-7.525388606876423,"RS_Rank":18.29268292682927,"Drawdown_%":40.99379037037764,"Composite_Score":58.78048780487805,"New_Composite_Score":34.26829268292683,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":-18.17},{"Ticker":"BIIB","EPS_TTM":9.32,"EPS_Percentile":76.82926829268293,"EPS_Growth":0.48819742489270374,"Inst_Accumulation":-2.16,"Alpha_63D":0.10806251061332818,"Beta":0.17,"RSI_14Day":48.05,"SMA200_Dist":12.22,"MA_Slope_50":0.011175744037868031,"Volume_Expansion":false,"Net_Inst":79,"RS_vs_SP100":0.00004146170170682417,"Return_63D":14.093730376390123,"RS_Rank":53.65853658536586,"Drawdown_%":12.304094956687697,"Composite_Score":55.97560975609756,"New_Composite_Score":48.41463414634146,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":-2.93},{"Ticker":"BIO","EPS_TTM":6.07,"EPS_Percentile":64.63414634146342,"EPS_Growth":0.6820428336079079,"Inst_Accumulation":5.12,"Alpha_63D":-0.12892696700812173,"Beta":1.07,"RSI_14Day":45.31,"SMA200_Dist":-3.46,"MA_Slope_50":-0.0009593473782878459,"Volume_Expansion":false,"Net_Inst":7,"RS_vs_SP100":-0.11981675806376813,"Return_63D":2.1079083998426262,"RS_Rank":34.146341463414636,"Drawdown_%":20.924527727345563,"Composite_Score":45.73170731707317,"New_Composite_Score":35.853658536585364,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":-0.12},{"Ticker":"ENPH","EPS_TTM":1.02,"EPS_Percentile":37.80487804878049,"EPS_Growth":13.931372549019608,"Inst_Accumulation":1.41,"Alpha_63D":0.12111034099308443,"Beta":1.62,"RSI_14Day":39.01,"SMA200_Dist":8.23,"MA_Slope_50":0.018796652285835182,"Volume_Expansion":false,"Net_Inst":42,"RS_vs_SP100":0.20180076307164496,"Return_63D":34.26966051338394,"RS_Rank":80.48780487804879,"Drawdown_%":40.56408047813825,"Composite_Score":57.3170731707317,"New_Composite_Score":51.21951219512196,"Earnings_Date":"2027-04-28","Daily_Composite_Score_delta":1.95},{"Ticker":"GE","EPS_TTM":8.11,"EPS_Percentile":70.73170731707317,"EPS_Growth":0.7583230579531444,"Inst_Accumulation":-1.48,"Alpha_63D":0.04459534970024209,"Beta":1.37,"RSI_14Day":54.06,"SMA200_Dist":14.66,"MA_Slope_50":0.026646179843449098,"Volume_Expansion":false,"Net_Inst":62,"RS_vs_SP100":0.09274931126325403,"Return_63D":23.364515332544837,"RS_Rank":70.73170731707317,"Drawdown_%":20.966620085005058,"Composite_Score":63.90243902439025,"New_Composite_Score":53.109756097560975,"Earnings_Date":"2026-07-16","Daily_Composite_Score_delta":-0.37},{"Ticker":"META","EPS_TTM":27.51,"EPS_Percentile":96.34146341463415,"EPS_Growth":-0.7637222828062523,"Inst_Accumulation":-0.09,"Alpha_63D":-0.12331768370136506,"Beta":1.24,"RSI_14Day":53.86,"SMA200_Dist":-6.34,"MA_Slope_50":-0.010979962361955668,"Volume_Expansion":true,"Net_Inst":28,"RS_vs_SP100":-0.0920826816064384,"Return_63D":4.881316045575606,"RS_Rank":40.243902439024396,"Drawdown_%":22.37087010926521,"Composite_Score":45.853658536585364,"New_Composite_Score":35.79268292682927,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":0.24},{"Ticker":"MSTR","EPS_TTM":-40.16,"EPS_Percentile":1.2195121951219512,"EPS_Growth":-0.3488545816733069,"Inst_Accumulation":7.1,"Alpha_63D":-0.7140383356641568,"Beta":3.55,"RSI_14Day":37.2,"SMA200_Dist":-47.16,"MA_Slope_50":-0.05025719280499676,"Volume_Expansion":false,"Net_Inst":-16,"RS_vs_SP100":-0.3821664384055611,"Return_63D":-24.127059634336664,"RS_Rank":7.317073170731707,"Drawdown_%":57.99224429263358,"Composite_Score":6.219512195121951,"New_Composite_Score":-3.7195121951219523,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":-0.12},{"Ticker":"SMR","EPS_TTM":-2.28,"EPS_Percentile":9.75609756097561,"EPS_Growth":-7.837719298245614,"Inst_Accumulation":11.57,"Alpha_63D":-0.3498491428341828,"Beta":2.27,"RSI_14Day":36.13,"SMA200_Dist":-54.23,"MA_Slope_50":-0.026873968994443494,"Volume_Expansion":false,"Net_Inst":47,"RS_vs_SP100":-0.1845639234151959,"Return_63D":-4.366808135300151,"RS_Rank":23.170731707317074,"Drawdown_%":50.45248824844554,"Composite_Score":6.463414634146342,"New_Composite_Score":1.402439024390242,"Earnings_Date":"2027-05-07","Daily_Composite_Score_delta":2.44},{"Ticker":"IONQ","EPS_TTM":-0.17,"EPS_Percentile":21.951219512195124,"EPS_Growth":-2336.705882352941,"Inst_Accumulation":2.19,"Alpha_63D":0.14728421416880916,"Beta":3.26,"RSI_14Day":36.28,"SMA200_Dist":-8.59,"MA_Slope_50":0.004212470014193758,"Volume_Expansion":false,"Net_Inst":-23,"RS_vs_SP100":0.44141381722936845,"Return_63D":58.230965929156284,"RS_Rank":87.8048780487805,"Drawdown_%":37.44969887339662,"Composite_Score":21.21951219512195,"New_Composite_Score":28.841463414634156,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":-0.12},{"Ticker":"JOBY","EPS_TTM":-1.13,"EPS_Percentile":10.975609756097562,"EPS_Growth":2.752212389380531,"Inst_Accumulation":7.37,"Alpha_63D":-0.4184460078264594,"Beta":2.72,"RSI_14Day":35.08,"SMA200_Dist":-35,"MA_Slope_50":-0.003917927554237329,"Volume_Expansion":false,"Net_Inst":39,"RS_vs_SP100":-0.19459515947948502,"Return_63D":-5.369931741729066,"RS_Rank":21.951219512195124,"Drawdown_%":35.52845767992752,"Composite_Score":25.60975609756098,"New_Composite_Score":16.158536585365855,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":0.24},{"Ticker":"ACHR","EPS_TTM":-1.1,"EPS_Percentile":12.195121951219512,"EPS_Growth":7.899999999999999,"Inst_Accumulation":-4.72,"Alpha_63D":-0.5195481923043823,"Beta":3.19,"RSI_14Day":40.88,"SMA200_Dist":-35.46,"MA_Slope_50":-0.015483254699381279,"Volume_Expansion":false,"Net_Inst":-7,"RS_vs_SP100":-0.23452879818817662,"Return_63D":-9.363295612598217,"RS_Rank":15.853658536585366,"Drawdown_%":37.76595957169116,"Composite_Score":28.414634146341463,"New_Composite_Score":17.012195121951223,"Earnings_Date":"2027-05-11","Daily_Composite_Score_delta":0.24},{"Ticker":"SOFI","EPS_TTM":0.44,"EPS_Percentile":32.926829268292686,"EPS_Growth":79.02272727272728,"Inst_Accumulation":0.57,"Alpha_63D":-0.19260788816827823,"Beta":2.17,"RSI_14Day":52.47,"SMA200_Dist":-20.09,"MA_Slope_50":-0.003998224664815687,"Volume_Expansion":false,"Net_Inst":-68,"RS_vs_SP100":-0.04033725295551083,"Return_63D":10.055858910668364,"RS_Rank":45.1219512195122,"Drawdown_%":29.03981570098992,"Composite_Score":51.09756097560975,"New_Composite_Score":40.24390243902439,"Earnings_Date":"2026-07-29","Daily_Composite_Score_delta":0.85},{"Ticker":"BA","EPS_TTM":1.95,"EPS_Percentile":42.68292682926829,"EPS_Growth":2080.9538461538464,"Inst_Accumulation":0.85,"Alpha_63D":-0.0970360072369591,"Beta":1.21,"RSI_14Day":52.33,"SMA200_Dist":2.93,"MA_Slope_50":-0.0005246556773317205,"Volume_Expansion":false,"Net_Inst":26,"RS_vs_SP100":-0.06970538040389829,"Return_63D":7.119046165829614,"RS_Rank":42.68292682926829,"Drawdown_%":22.679906206244624,"Composite_Score":62.68292682926829,"New_Composite_Score":48.47560975609756,"Earnings_Date":"2026-07-28","Daily_Composite_Score_delta":0.18},{"Ticker":"AVGO","EPS_TTM":6.01,"EPS_Percentile":63.41463414634146,"EPS_Growth":10.299500831946755,"Inst_Accumulation":-0.61,"Alpha_63D":-0.03821733264474869,"Beta":1.47,"RSI_14Day":50.16,"SMA200_Dist":7.41,"MA_Slope_50":-0.009929681754081958,"Volume_Expansion":false,"Net_Inst":64,"RS_vs_SP100":0.022951213124482672,"Return_63D":16.3847055186677,"RS_Rank":60.97560975609756,"Drawdown_%":25.15106698404559,"Composite_Score":55.36585365853659,"New_Composite_Score":48.048780487804876,"Earnings_Date":"2027-06-03","Daily_Composite_Score_delta":0.61},{"Ticker":"RIVN","EPS_TTM":-2.92,"EPS_Percentile":8.536585365853659,"EPS_Growth":7.633561643835616,"Inst_Accumulation":-3.52,"Alpha_63D":-0.0848784920713663,"Beta":1.6,"RSI_14Day":51.06,"SMA200_Dist":5.13,"MA_Slope_50":0.004907247528563764,"Volume_Expansion":true,"Net_Inst":24,"RS_vs_SP100":-0.0067909868340496615,"Return_63D":13.410485522814467,"RS_Rank":48.78048780487805,"Drawdown_%":27.28297753683016,"Composite_Score":43.17073170731708,"New_Composite_Score":31.890243902439025,"Earnings_Date":"2026-07-30","Daily_Composite_Score_delta":2.32},{"Ticker":"MSFT","EPS_TTM":16.79,"EPS_Percentile":89.02439024390245,"EPS_Growth":-0.06372840976771879,"Inst_Accumulation":-1.82,"Alpha_63D":-0.1268322140453642,"Beta":1.12,"RSI_14Day":46.53,"SMA200_Dist":-13.58,"MA_Slope_50":-0.008892649435834035,"Volume_Expansion":false,"Net_Inst":3,"RS_vs_SP100":-0.11121471299790087,"Return_63D":2.9681129064293486,"RS_Rank":36.58536585365854,"Drawdown_%":23.38443607454554,"Composite_Score":43.536585365853654,"New_Composite_Score":35.792682926829265,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":0.49},{"Ticker":"GOOGL","EPS_TTM":13.11,"EPS_Percentile":85.36585365853658,"EPS_Growth":-0.7566742944317315,"Inst_Accumulation":0,"Alpha_63D":0.012705218018175174,"Beta":1.24,"RSI_14Day":50.29,"SMA200_Dist":13.86,"MA_Slope_50":0.006715093676682999,"Volume_Expansion":false,"Net_Inst":42,"RS_vs_SP100":0.043940220113101836,"Return_63D":18.483606217529612,"RS_Rank":64.63414634146342,"Drawdown_%":16.20137630019195,"Composite_Score":52.195121951219505,"New_Composite_Score":46.82926829268293,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":-0.43},{"Ticker":"DPZ","EPS_TTM":17.37,"EPS_Percentile":90.2439024390244,"EPS_Growth":-0.4784110535405872,"Inst_Accumulation":8.86,"Alpha_63D":-0.31442147349951927,"Beta":0.96,"RSI_14Day":46.79,"SMA200_Dist":-20.57,"MA_Slope_50":-0.01927275089868314,"Volume_Expansion":false,"Net_Inst":18,"RS_vs_SP100":-0.31962730718200705,"Return_63D":-17.87314651198127,"RS_Rank":9.75609756097561,"Drawdown_%":31.92794275572307,"Composite_Score":39.024390243902445,"New_Composite_Score":22.5,"Earnings_Date":"2026-07-20","Daily_Composite_Score_delta":-0.12},{"Ticker":"CEG","EPS_TTM":11.51,"EPS_Percentile":81.70731707317073,"EPS_Growth":0.34578627280625546,"Inst_Accumulation":2.42,"Alpha_63D":-0.26075699715022665,"Beta":1.13,"RSI_14Day":40.07,"SMA200_Dist":-22.54,"MA_Slope_50":-0.01802199198344694,"Volume_Expansion":false,"Net_Inst":-51,"RS_vs_SP100":-0.2438380376821414,"Return_63D":-10.294219561994696,"RS_Rank":14.634146341463413,"Drawdown_%":28.780078060741072,"Composite_Score":38.90243902439025,"New_Composite_Score":26.951219512195117,"Earnings_Date":"2027-05-11","Daily_Composite_Score_delta":0.61},{"Ticker":"PYPL","EPS_TTM":5.33,"EPS_Percentile":59.756097560975604,"EPS_Growth":0.527204502814259,"Inst_Accumulation":-5.96,"Alpha_63D":-0.19142141947874447,"Beta":1.33,"RSI_14Day":53.57,"SMA200_Dist":-16.66,"MA_Slope_50":-0.012840394321457352,"Volume_Expansion":false,"Net_Inst":-211,"RS_vs_SP100":-0.1484732915982203,"Return_63D":-0.7577449536025851,"RS_Rank":29.268292682926827,"Drawdown_%":20.90944133883571,"Composite_Score":40.00000000000001,"New_Composite_Score":29.817073170731707,"Earnings_Date":"2026-07-28","Daily_Composite_Score_delta":0},{"Ticker":"CRWD","EPS_TTM":-0.05,"EPS_Percentile":26.82926829268293,"EPS_Growth":528.1999999999999,"Inst_Accumulation":0,"Alpha_63D":0.6341682381956318,"Beta":1.24,"RSI_14Day":64.19,"SMA200_Dist":50.7,"MA_Slope_50":0.054212822984172834,"Volume_Expansion":false,"Net_Inst":-29,"RS_vs_SP100":0.6654032402905585,"Return_63D":80.62990823527528,"RS_Rank":90.2439024390244,"Drawdown_%":18.478263649022576,"Composite_Score":73.53658536585367,"New_Composite_Score":64.08536585365853,"Earnings_Date":"2027-06-03","Daily_Composite_Score_delta":-0.49},{"Ticker":"PERI","EPS_TTM":-0.25,"EPS_Percentile":19.51219512195122,"EPS_Growth":44.4,"Inst_Accumulation":4.04,"Alpha_63D":-0.22089488165750534,"Beta":1.19,"RSI_14Day":54.13,"SMA200_Dist":-2.27,"MA_Slope_50":-0.012938337711701577,"Volume_Expansion":false,"Net_Inst":-5,"RS_vs_SP100":-0.19616717166568842,"Return_63D":-5.527132960349406,"RS_Rank":20.73170731707317,"Drawdown_%":30.28933322215756,"Composite_Score":44.390243902439025,"New_Composite_Score":25.792682926829272,"Earnings_Date":"2027-05-20","Daily_Composite_Score_delta":-0.37},{"Ticker":"BLSH","EPS_TTM":-6.41,"EPS_Percentile":2.4390243902439024,"EPS_Growth":9.173166926677066,"Inst_Accumulation":0.95,"Alpha_63D":-0.33273884376030755,"Beta":0,"RSI_14Day":43.61,"SMA200_Dist":-36.77,"MA_Slope_50":-0.048448388891598713,"Volume_Expansion":false,"Net_Inst":50,"RS_vs_SP100":-0.462884685822502,"Return_63D":-32.19888437603076,"RS_Rank":2.4390243902439024,"Drawdown_%":51.742392838263484,"Composite_Score":24.26829268292683,"New_Composite_Score":8.475609756097558,"Earnings_Date":"2027-05-14","Daily_Composite_Score_delta":0.12},{"Ticker":"MBLY","EPS_TTM":-5.03,"EPS_Percentile":4.878048780487805,"EPS_Growth":6.021868787276342,"Inst_Accumulation":-1.26,"Alpha_63D":0.1112614028519148,"Beta":1.16,"RSI_14Day":49.59,"SMA200_Dist":-11.52,"MA_Slope_50":0.01326334616769277,"Volume_Expansion":true,"Net_Inst":3,"RS_vs_SP100":0.1320847375818659,"Return_63D":27.29805796440603,"RS_Rank":75.60975609756098,"Drawdown_%":31.8795444982153,"Composite_Score":39.146341463414636,"New_Composite_Score":36.64634146341464,"Earnings_Date":"2027-04-23","Daily_Composite_Score_delta":-1.34},{"Ticker":"CMS","EPS_TTM":3.61,"EPS_Percentile":51.21951219512195,"EPS_Growth":1.0803324099722993,"Inst_Accumulation":2.26,"Alpha_63D":-0.08553774647824819,"Beta":0.34,"RSI_14Day":53.78,"SMA200_Dist":3.06,"MA_Slope_50":0.0007179612132950362,"Volume_Expansion":false,"Net_Inst":18,"RS_vs_SP100":-0.1714340022392965,"Return_63D":-3.053816017710215,"RS_Rank":26.82926829268293,"Drawdown_%":12.159120495183384,"Composite_Score":48.78048780487806,"New_Composite_Score":35.487804878048784,"Earnings_Date":"2027-04-28","Daily_Composite_Score_delta":0.24},{"Ticker":"IOT","EPS_TTM":0.1,"EPS_Percentile":30.48780487804878,"EPS_Growth":275.79999999999995,"Inst_Accumulation":10,"Alpha_63D":0.01078497688409058,"Beta":1.34,"RSI_14Day":62,"SMA200_Dist":8.03,"MA_Slope_50":0.017123198666379184,"Volume_Expansion":false,"Net_Inst":19,"RS_vs_SP100":0.055034563185236696,"Return_63D":19.593040524743106,"RS_Rank":67.07317073170732,"Drawdown_%":26.894796563147693,"Composite_Score":66.70731707317073,"New_Composite_Score":52.378048780487816,"Earnings_Date":"2027-06-04","Daily_Composite_Score_delta":4.15},{"Ticker":"SHOP","EPS_TTM":1.02,"EPS_Percentile":37.80487804878049,"EPS_Growth":26.64705882352941,"Inst_Accumulation":-2.29,"Alpha_63D":-0.32807416499305286,"Beta":2.58,"RSI_14Day":56.34,"SMA200_Dist":-12.21,"MA_Slope_50":-0.008146758894123769,"Volume_Expansion":false,"Net_Inst":-116,"RS_vs_SP100":-0.12244373453478574,"Return_63D":1.8452107527408728,"RS_Rank":32.926829268292686,"Drawdown_%":29.40653991657008,"Composite_Score":50.243902439024396,"New_Composite_Score":34.81707317073171,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":0.73},{"Ticker":"AMZN","EPS_TTM":8.37,"EPS_Percentile":74.39024390243902,"EPS_Growth":0.7013142174432498,"Inst_Accumulation":0,"Alpha_63D":-0.06112691758436814,"Beta":1.46,"RSI_14Day":49.41,"SMA200_Dist":4.48,"MA_Slope_50":-0.004262139580757017,"Volume_Expansion":false,"Net_Inst":37,"RS_vs_SP100":-0.0012598302357587077,"Return_63D":13.963601182643567,"RS_Rank":52.4390243902439,"Drawdown_%":17.44790626256815,"Composite_Score":49.75609756097561,"New_Composite_Score":44.329268292682926,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":-1.46},{"Ticker":"UUUU","EPS_TTM":-0.3,"EPS_Percentile":18.29268292682927,"EPS_Growth":671.2333333333333,"Inst_Accumulation":4.26,"Alpha_63D":-0.4564327747690228,"Beta":1.53,"RSI_14Day":33.98,"SMA200_Dist":-28.72,"MA_Slope_50":-0.04286748031995673,"Volume_Expansion":false,"Net_Inst":27,"RS_vs_SP100":-0.38745547847605977,"Return_63D":-24.65596364138653,"RS_Rank":6.097560975609756,"Drawdown_%":45.323131775568,"Composite_Score":36.34146341463415,"New_Composite_Score":21.03658536585366,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":0.37},{"Ticker":"IDCC","EPS_TTM":10.62,"EPS_Percentile":79.26829268292683,"EPS_Growth":0.8549905838041432,"Inst_Accumulation":0.92,"Alpha_63D":-0.34795867980101153,"Beta":1.43,"RSI_14Day":41.89,"SMA200_Dist":-18.79,"MA_Slope_50":-0.031985890566317066,"Volume_Expansion":false,"Net_Inst":10,"RS_vs_SP100":-0.29199596771426795,"Return_63D":-15.11001256520735,"RS_Rank":10.975609756097562,"Drawdown_%":33.84253937304741,"Composite_Score":41.09756097560975,"New_Composite_Score":25.853658536585368,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":-0.73},{"Ticker":"ANET","EPS_TTM":2.92,"EPS_Percentile":46.34146341463415,"EPS_Growth":6.770547945205481,"Inst_Accumulation":1.38,"Alpha_63D":0.1344742774782892,"Beta":1.61,"RSI_14Day":60.19,"SMA200_Dist":26.11,"MA_Slope_50":-0.0024366106469664,"Volume_Expansion":false,"Net_Inst":76,"RS_vs_SP100":0.2138632411362278,"Return_63D":35.47590831984221,"RS_Rank":81.70731707317073,"Drawdown_%":23.23749735248456,"Composite_Score":54.14634146341463,"New_Composite_Score":49.268292682926834,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":-0.06},{"Ticker":"SNAP","EPS_TTM":-0.24,"EPS_Percentile":20.73170731707317,"EPS_Growth":1119.7083333333335,"Inst_Accumulation":-10.59,"Alpha_63D":-0.1802168984779664,"Beta":1.03,"RSI_14Day":40.64,"SMA200_Dist":-28.45,"MA_Slope_50":-0.018359896920315522,"Volume_Expansion":false,"Net_Inst":-4,"RS_vs_SP100":-0.17631252321610058,"Return_63D":-3.5416681153906144,"RS_Rank":25.609756097560975,"Drawdown_%":31.00158698078384,"Composite_Score":40.73170731707317,"New_Composite_Score":31.09756097560976,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":-0.61},{"Ticker":"MMM","EPS_TTM":5.18,"EPS_Percentile":57.3170731707317,"EPS_Growth":0.7992277992277994,"Inst_Accumulation":-0.11,"Alpha_63D":-0.07049663953996602,"Beta":1.01,"RSI_14Day":42.5,"SMA200_Dist":-2.1,"MA_Slope_50":0.007332411246745496,"Volume_Expansion":false,"Net_Inst":-53,"RS_vs_SP100":-0.06919518111934408,"Return_63D":7.170066094285042,"RS_Rank":43.90243902439025,"Drawdown_%":19.13407224404345,"Composite_Score":47.3170731707317,"New_Composite_Score":40.426829268292686,"Earnings_Date":"2026-07-21","Daily_Composite_Score_delta":-0.37},{"Ticker":"CAT","EPS_TTM":20.1,"EPS_Percentile":93.90243902439023,"EPS_Growth":0.12587064676616902,"Inst_Accumulation":-0.98,"Alpha_63D":0.0910255456840246,"Beta":1.59,"RSI_14Day":49,"SMA200_Dist":34.62,"MA_Slope_50":0.016320510772646915,"Volume_Expansion":false,"Net_Inst":275,"RS_vs_SP100":0.1678115925007193,"Return_63D":30.87074345629138,"RS_Rank":78.04878048780488,"Drawdown_%":13.880000945060484,"Composite_Score":63.292682926829265,"New_Composite_Score":58.59756097560976,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":0.12},{"Ticker":"BE","EPS_TTM":-0.06,"EPS_Percentile":25.609756097560975,"EPS_Growth":1788.6666666666667,"Inst_Accumulation":2.23,"Alpha_63D":0.36831620235743345,"Beta":3.78,"RSI_14Day":44.46,"SMA200_Dist":51.56,"MA_Slope_50":0.01745295032126529,"Volume_Expansion":false,"Net_Inst":206,"RS_vs_SP100":0.7301216432903339,"Return_63D":87.10174853525284,"RS_Rank":93.90243902439023,"Drawdown_%":31.61869931071345,"Composite_Score":65.1219512195122,"New_Composite_Score":59.99999999999999,"Earnings_Date":"2027-04-28","Daily_Composite_Score_delta":-0.55},{"Ticker":"VRT","EPS_TTM":3.98,"EPS_Percentile":52.4390243902439,"EPS_Growth":7.939698492462311,"Inst_Accumulation":3.39,"Alpha_63D":-0.0646195637505515,"Beta":2.04,"RSI_14Day":50.49,"SMA200_Dist":35.17,"MA_Slope_50":-0.0014398320816338597,"Volume_Expansion":false,"Net_Inst":242,"RS_vs_SP100":0.07073211199413065,"Return_63D":21.1627954056325,"RS_Rank":69.51219512195121,"Drawdown_%":25.31695963070349,"Composite_Score":58.048780487804876,"New_Composite_Score":48.963414634146346,"Earnings_Date":"2027-04-22","Daily_Composite_Score_delta":2.44},{"Ticker":"SMRT","EPS_TTM":-0.13,"EPS_Percentile":24.390243902439025,"EPS_Growth":300.1538461538462,"Inst_Accumulation":5.32,"Alpha_63D":-0.4730044936607288,"Beta":1.51,"RSI_14Day":36.87,"SMA200_Dist":-31,"MA_Slope_50":-0.026647051096689193,"Volume_Expansion":false,"Net_Inst":-1,"RS_vs_SP100":-0.40663011420900963,"Return_63D":-26.573427214681516,"RS_Rank":3.6585365853658534,"Drawdown_%":44.14893856492179,"Composite_Score":39.024390243902445,"New_Composite_Score":21.951219512195124,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":0.24},{"Ticker":"LRCX","EPS_TTM":5.3,"EPS_Percentile":58.536585365853654,"EPS_Growth":7.000000000000001,"Inst_Accumulation":-1.43,"Alpha_63D":0.2360395825409127,"Beta":1.83,"RSI_14Day":45.41,"SMA200_Dist":47.39,"MA_Slope_50":0.02770995438886504,"Volume_Expansion":false,"Net_Inst":307,"RS_vs_SP100":0.34406063145253407,"Return_63D":48.49564735147285,"RS_Rank":86.58536585365853,"Drawdown_%":24.738648376824386,"Composite_Score":65,"New_Composite_Score":59.20731707317073,"Earnings_Date":"2027-04-22","Daily_Composite_Score_delta":0.37},{"Ticker":"QS","EPS_TTM":-0.71,"EPS_Percentile":15.853658536585366,"EPS_Growth":6.95774647887324,"Inst_Accumulation":5.04,"Alpha_63D":-0.288003619353067,"Beta":2.65,"RSI_14Day":39.15,"SMA200_Dist":-33.44,"MA_Slope_50":-0.0019668209274340005,"Volume_Expansion":false,"Net_Inst":-15,"RS_vs_SP100":-0.07326297995044628,"Return_63D":6.763286211174821,"RS_Rank":41.46341463414634,"Drawdown_%":35.00545268745836,"Composite_Score":32.56097560975609,"New_Composite_Score":26.890243902439025,"Earnings_Date":"2026-07-22","Daily_Composite_Score_delta":0},{"Ticker":"BAC","EPS_TTM":4.03,"EPS_Percentile":54.87804878048781,"EPS_Growth":2.3796526054590568,"Inst_Accumulation":-2.1,"Alpha_63D":-0.004815318524517276,"Beta":1.18,"RSI_14Day":60.96,"SMA200_Dist":10.64,"MA_Slope_50":0.011254032041196401,"Volume_Expansion":false,"Net_Inst":-59,"RS_vs_SP100":0.018610933046677713,"Return_63D":15.950677510887212,"RS_Rank":59.756097560975604,"Drawdown_%":17.1778029656448,"Composite_Score":57.6829268292683,"New_Composite_Score":47.19512195121951,"Earnings_Date":"2026-07-14","Daily_Composite_Score_delta":-0.49},{"Ticker":"JNJ","EPS_TTM":8.65,"EPS_Percentile":75.60975609756098,"EPS_Growth":0.20462427745664735,"Inst_Accumulation":0.23,"Alpha_63D":0.06413584246937609,"Beta":0.23,"RSI_14Day":67.4,"SMA200_Dist":19.59,"MA_Slope_50":0.014329765974863858,"Volume_Expansion":false,"Net_Inst":169,"RS_vs_SP100":-0.036076455918513606,"Return_63D":10.481938614368081,"RS_Rank":46.34146341463415,"Drawdown_%":10.95912073621325,"Composite_Score":61.829268292682926,"New_Composite_Score":45.975609756097555,"Earnings_Date":"2026-07-15","Daily_Composite_Score_delta":0.12},{"Ticker":"MU","EPS_TTM":44.17,"EPS_Percentile":100,"EPS_Growth":1.4736246321032376,"Inst_Accumulation":-1.89,"Alpha_63D":1.2183770813465906,"Beta":2.18,"RSI_14Day":46.99,"SMA200_Dist":107.95,"MA_Slope_50":0.06063614105927169,"Volume_Expansion":false,"Net_Inst":384,"RS_vs_SP100":1.37194917497998,"Return_63D":151.28450170421743,"RS_Rank":98.78048780487805,"Drawdown_%":30.30559414893712,"Composite_Score":75.85365853658536,"New_Composite_Score":68.10975609756098,"Earnings_Date":"2026-06-24","Daily_Composite_Score_delta":0},{"Ticker":"GEV","EPS_TTM":34.32,"EPS_Percentile":98.78048780487805,"EPS_Growth":-1.4458041958041958,"Inst_Accumulation":-1.06,"Alpha_63D":0.036348509835644,"Beta":0.99,"RSI_14Day":51.58,"SMA200_Dist":33.57,"MA_Slope_50":0.002697011830595721,"Volume_Expansion":false,"Net_Inst":353,"RS_vs_SP100":0.03504705141502207,"Return_63D":17.59428934772166,"RS_Rank":62.19512195121951,"Drawdown_%":24.570041255395854,"Composite_Score":55.73170731707317,"New_Composite_Score":44.756097560975604,"Earnings_Date":"2026-07-22","Daily_Composite_Score_delta":-1.95},{"Ticker":"PEP","EPS_TTM":6.37,"EPS_Percentile":67.07317073170732,"EPS_Growth":-0.22135007849293564,"Inst_Accumulation":0.22,"Alpha_63D":-0.12744136312634943,"Beta":0.36,"RSI_14Day":48.32,"SMA200_Dist":-5.07,"MA_Slope_50":-0.008203116070410847,"Volume_Expansion":false,"Net_Inst":89,"RS_vs_SP100":-0.21073470204615385,"Return_63D":-6.98388599839594,"RS_Rank":19.51219512195122,"Drawdown_%":20.23094761715597,"Composite_Score":38.536585365853654,"New_Composite_Score":26.03658536585366,"Earnings_Date":"2026-07-09","Daily_Composite_Score_delta":0.37},{"Ticker":"DE","EPS_TTM":17.65,"EPS_Percentile":91.46341463414635,"EPS_Growth":0.4175637393767706,"Inst_Accumulation":-1.13,"Alpha_63D":-0.09187433036574058,"Beta":0.9,"RSI_14Day":49.6,"SMA200_Dist":11.36,"MA_Slope_50":0.005830062291526256,"Volume_Expansion":false,"Net_Inst":167,"RS_vs_SP100":-0.10488891457196003,"Return_63D":3.6006927490234375,"RS_Rank":37.80487804878049,"Drawdown_%":20.131624188012864,"Composite_Score":58.41463414634147,"New_Composite_Score":43.59756097560975,"Earnings_Date":"2027-05-21","Daily_Composite_Score_delta":0.24},{"Ticker":"SNDK","EPS_TTM":28.77,"EPS_Percentile":97.5609756097561,"EPS_Growth":6.116440736878693,"Inst_Accumulation":-4.87,"Alpha_63D":0.7619235754881771,"Beta":5.05,"RSI_14Day":46.96,"SMA200_Dist":137.45,"MA_Slope_50":0.05280700213415341,"Volume_Expansion":false,"Net_Inst":490,"RS_vs_SP100":1.2890142358400645,"Return_63D":142.99100779022592,"RS_Rank":97.5609756097561,"Drawdown_%":30.719488172510705,"Composite_Score":77.68292682926828,"New_Composite_Score":69.39024390243902,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":0.43},{"Ticker":"STX","EPS_TTM":10.54,"EPS_Percentile":78.04878048780488,"EPS_Growth":7.363377609108161,"Inst_Accumulation":-2.32,"Alpha_63D":0.5520719892269638,"Beta":2.09,"RSI_14Day":46.11,"SMA200_Dist":84.4,"MA_Slope_50":0.03475296818636134,"Volume_Expansion":false,"Net_Inst":225,"RS_vs_SP100":0.6939309570747556,"Return_63D":83.482679913695,"RS_Rank":91.46341463414635,"Drawdown_%":25.033824735762032,"Composite_Score":72.6829268292683,"New_Composite_Score":66.03658536585365,"Earnings_Date":"2027-04-28","Daily_Composite_Score_delta":0.67},{"Ticker":"INTU","EPS_TTM":16.51,"EPS_Percentile":87.8048780487805,"EPS_Growth":-0.09388249545729864,"Inst_Accumulation":0,"Alpha_63D":-0.47502261374287724,"Beta":0.98,"RSI_14Day":42.45,"SMA200_Dist":-45.53,"MA_Slope_50":-0.037237502904468374,"Volume_Expansion":false,"Net_Inst":-201,"RS_vs_SP100":-0.47762553058412116,"Return_63D":-33.672968852192675,"RS_Rank":1.2195121951219512,"Drawdown_%":46.98962940205603,"Composite_Score":35.1219512195122,"New_Composite_Score":17.74390243902439,"Earnings_Date":"2027-05-20","Daily_Composite_Score_delta":0},{"Ticker":"UBER","EPS_TTM":4.01,"EPS_Percentile":53.65853658536586,"EPS_Growth":7.30922693266833,"Inst_Accumulation":-1.74,"Alpha_63D":-0.13174488615773644,"Beta":1.13,"RSI_14Day":51.96,"SMA200_Dist":-8.9,"MA_Slope_50":-0.003334240935926316,"Volume_Expansion":false,"Net_Inst":-81,"RS_vs_SP100":-0.11482592668965119,"Return_63D":2.606991537254322,"RS_Rank":35.36585365853659,"Drawdown_%":13.33838297691908,"Composite_Score":50.85365853658537,"New_Composite_Score":41.707317073170735,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":0.67},{"Ticker":"GILD","EPS_TTM":7.35,"EPS_Percentile":69.51219512195121,"EPS_Growth":181.95646258503405,"Inst_Accumulation":-1.48,"Alpha_63D":-0.07646929568168437,"Beta":0.34,"RSI_14Day":63.12,"SMA200_Dist":4.28,"MA_Slope_50":-0.0010890284129820601,"Volume_Expansion":false,"Net_Inst":151,"RS_vs_SP100":-0.16236555144273268,"Return_63D":-2.146970938053825,"RS_Rank":28.04878048780488,"Drawdown_%":22.02824070768656,"Composite_Score":70,"New_Composite_Score":48.048780487804876,"Earnings_Date":"2027-05-07","Daily_Composite_Score_delta":2.2},{"Ticker":"ISRG","EPS_TTM":8.24,"EPS_Percentile":71.95121951219512,"EPS_Growth":0.6189320388349514,"Inst_Accumulation":-1.22,"Alpha_63D":-0.283024789421478,"Beta":1.45,"RSI_14Day":49.08,"SMA200_Dist":-14.99,"MA_Slope_50":-0.011954936382661902,"Volume_Expansion":false,"Net_Inst":-70,"RS_vs_SP100":-0.22445916049349057,"Return_63D":-8.356331843129613,"RS_Rank":17.073170731707318,"Drawdown_%":21.54356280679835,"Composite_Score":42.926829268292686,"New_Composite_Score":29.451219512195117,"Earnings_Date":"2026-07-16","Daily_Composite_Score_delta":-1.71},{"Ticker":"TMO","EPS_TTM":18.19,"EPS_Percentile":92.6829268292683,"EPS_Growth":-0.4821330401319407,"Inst_Accumulation":-2.6,"Alpha_63D":-0.0805303682331143,"Beta":0.86,"RSI_14Day":59.01,"SMA200_Dist":-3.2,"MA_Slope_50":0.0033837611472458604,"Volume_Expansion":false,"Net_Inst":-62,"RS_vs_SP100":-0.09875078612182153,"Return_63D":4.214505594037283,"RS_Rank":39.02439024390244,"Drawdown_%":19.82954339952731,"Composite_Score":53.170731707317074,"New_Composite_Score":39.8780487804878,"Earnings_Date":"2026-07-23","Daily_Composite_Score_delta":0.61},{"Ticker":"NKE","EPS_TTM":2.1,"EPS_Percentile":43.90243902439025,"EPS_Growth":11.838095238095237,"Inst_Accumulation":-1.43,"Alpha_63D":-0.15052692874213336,"Beta":1.11,"RSI_14Day":47.53,"SMA200_Dist":-24.6,"MA_Slope_50":-0.005200984934335885,"Volume_Expansion":true,"Net_Inst":-99,"RS_vs_SP100":-0.13621088611529197,"Return_63D":0.46849559469023433,"RS_Rank":30.48780487804878,"Drawdown_%":37.8905660403687,"Composite_Score":45.975609756097555,"New_Composite_Score":32.01219512195122,"Earnings_Date":"2026-06-30","Daily_Composite_Score_delta":1.71},{"Ticker":"CMP","EPS_TTM":0.15,"EPS_Percentile":31.70731707317073,"EPS_Growth":297.0666666666667,"Inst_Accumulation":8.16,"Alpha_63D":0.09465834586839572,"Beta":1.25,"RSI_14Day":44.91,"SMA200_Dist":24.5,"MA_Slope_50":0.013443364699892038,"Volume_Expansion":false,"Net_Inst":15,"RS_vs_SP100":0.12719480638394431,"Return_63D":26.809064844613868,"RS_Rank":74.39024390243902,"Drawdown_%":16.084744113031615,"Composite_Score":62.073170731707314,"New_Composite_Score":58.59756097560976,"Earnings_Date":"2027-05-06","Daily_Composite_Score_delta":1.59},{"Ticker":"BBAI","EPS_TTM":-0.88,"EPS_Percentile":14.634146341463413,"EPS_Growth":51,"Inst_Accumulation":-3.18,"Alpha_63D":-0.46128914248697955,"Beta":3.15,"RSI_14Day":34.01,"SMA200_Dist":-35.3,"MA_Slope_50":-0.007586810373865684,"Volume_Expansion":false,"Net_Inst":-16,"RS_vs_SP100":-0.18147558205326164,"Return_63D":-4.057973999106725,"RS_Rank":24.390243902439025,"Drawdown_%":38.01498411614396,"Composite_Score":35.97560975609756,"New_Composite_Score":25.731707317073173,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":-0.61},{"Ticker":"ATEX","EPS_TTM":4.84,"EPS_Percentile":56.09756097560976,"EPS_Growth":63.82644628099174,"Inst_Accumulation":4.53,"Alpha_63D":1.4296235869184937,"Beta":0.84,"RSI_14Day":72.79,"SMA200_Dist":176.07,"MA_Slope_50":0.09605849349394854,"Volume_Expansion":false,"Net_Inst":16,"RS_vs_SP100":1.4088002521885425,"Return_63D":154.96960942507368,"RS_Rank":100,"Drawdown_%":13.497233218297858,"Composite_Score":81.82926829268293,"New_Composite_Score":73.71951219512195,"Earnings_Date":"2026-06-10","Daily_Composite_Score_delta":0},{"Ticker":"CBZ","EPS_TTM":2.48,"EPS_Percentile":45.1219512195122,"EPS_Growth":3.2137096774193545,"Inst_Accumulation":-4.11,"Alpha_63D":0.1698630461125473,"Beta":0.98,"RSI_14Day":65.1,"SMA200_Dist":-8.31,"MA_Slope_50":0.016497679208804777,"Volume_Expansion":false,"Net_Inst":6,"RS_vs_SP100":0.1672601292713034,"Return_63D":30.815597133349776,"RS_Rank":76.82926829268293,"Drawdown_%":26.684168216908866,"Composite_Score":56.58536585365854,"New_Composite_Score":48.59756097560976,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":0.12},{"Ticker":"ZD","EPS_TTM":1.14,"EPS_Percentile":40.243902439024396,"EPS_Growth":6.56140350877193,"Inst_Accumulation":-9.94,"Alpha_63D":0.05781083234466855,"Beta":1.08,"RSI_14Day":63.71,"SMA200_Dist":32.57,"MA_Slope_50":0.012177241921583854,"Volume_Expansion":false,"Net_Inst":5,"RS_vs_SP100":0.06822249970964411,"Return_63D":20.911834177183852,"RS_Rank":68.29268292682927,"Drawdown_%":19.593572194849685,"Composite_Score":59.51219512195122,"New_Composite_Score":48.17073170731707,"Earnings_Date":"2027-05-07","Daily_Composite_Score_delta":-0.3},{"Ticker":"WSR","EPS_TTM":0.96,"EPS_Percentile":35.36585365853659,"EPS_Growth":12.072916666666668,"Inst_Accumulation":0.88,"Alpha_63D":0.025460742112751525,"Beta":0.78,"RSI_14Day":57.84,"SMA200_Dist":22.42,"MA_Slope_50":0.0001790753844058929,"Volume_Expansion":false,"Net_Inst":13,"RS_vs_SP100":-0.00317134314093126,"Return_63D":13.772449892126307,"RS_Rank":51.21951219512195,"Drawdown_%":3.6747023875523213,"Composite_Score":56.09756097560975,"New_Composite_Score":46.40243902439024,"Earnings_Date":"2027-05-05","Daily_Composite_Score_delta":0.24},{"Ticker":"ADUS","EPS_TTM":5.41,"EPS_Percentile":60.97560975609756,"EPS_Growth":0.27726432532347506,"Inst_Accumulation":1.16,"Alpha_63D":0.016106500136199353,"Beta":0.88,"RSI_14Day":79.27,"SMA200_Dist":0.68,"MA_Slope_50":0.011684263039325805,"Volume_Expansion":false,"Net_Inst":-2,"RS_vs_SP100":0.0004889990887360085,"Return_63D":14.13848411509304,"RS_Rank":54.87804878048781,"Drawdown_%":24.772592085393182,"Composite_Score":54.268292682926834,"New_Composite_Score":39.878048780487816,"Earnings_Date":"2027-05-04","Daily_Composite_Score_delta":2.07},{"Ticker":"V","EPS_TTM":11.37,"EPS_Percentile":80.48780487804879,"EPS_Growth":0.18029903254177668,"Inst_Accumulation":-1.23,"Alpha_63D":0.04031030214578059,"Beta":0.75,"RSI_14Day":59.9,"SMA200_Dist":5.61,"MA_Slope_50":0.013370199528973925,"Volume_Expansion":false,"Net_Inst":-28,"RS_vs_SP100":0.007773841630231981,"Return_63D":14.866968369242636,"RS_Rank":58.536585365853654,"Drawdown_%":10.24176959691287,"Composite_Score":58.65853658536585,"New_Composite_Score":50.426829268292686,"Earnings_Date":"2027-04-28","Daily_Composite_Score_delta":0.73},{"Ticker":"JPM","EPS_TTM":20.88,"EPS_Percentile":95.1219512195122,"EPS_Growth":-0.7595785440613027,"Inst_Accumulation":-0.34,"Alpha_63D":-0.026591506584519836,"Beta":0.98,"RSI_14Day":56.17,"SMA200_Dist":7.05,"MA_Slope_50":0.007254994880179823,"Volume_Expansion":false,"Net_Inst":31,"RS_vs_SP100":-0.029194423425763727,"Return_63D":11.170141863643067,"RS_Rank":47.5609756097561,"Drawdown_%":12.188764055163578,"Composite_Score":55.853658536585364,"New_Composite_Score":45.30487804878049,"Earnings_Date":"2026-07-14","Daily_Composite_Score_delta":-1.77},{"Ticker":"AAPL","EPS_TTM":8.27,"EPS_Percentile":73.17073170731707,"EPS_Growth":0.22611850060459504,"Inst_Accumulation":0,"Alpha_63D":0.08364355542020604,"Beta":1.09,"RSI_14Day":62.23,"SMA200_Dist":15.3,"MA_Slope_50":0.0125126965828079,"Volume_Expansion":false,"Net_Inst":98,"RS_vs_SP100":0.09535668120580354,"Return_63D":23.625252326799803,"RS_Rank":71.95121951219512,"Drawdown_%":12.706223591210087,"Composite_Score":59.39024390243902,"New_Composite_Score":52.13414634146342,"Earnings_Date":"2027-04-30","Daily_Composite_Score_delta":2.93},{"Ticker":"GOOG","EPS_TTM":13.11,"EPS_Percentile":85.36585365853658,"EPS_Growth":-0.7543859649122806,"Inst_Accumulation":0,"Alpha_63D":0.009409485383185617,"Beta":1.23,"RSI_14Day":49.79,"SMA200_Dist":13.07,"MA_Slope_50":0.0064054658331907195,"Volume_Expansion":false,"Net_Inst":61,"RS_vs_SP100":0.03934302905749032,"Return_63D":18.023887111968477,"RS_Rank":63.41463414634146,"Drawdown_%":16.126204071156796,"Composite_Score":51.951219512195124,"New_Composite_Score":46.76829268292683,"Earnings_Date":"2027-04-29","Daily_Composite_Score_delta":-0.73},{"Ticker":"CSCO","EPS_TTM":3.07,"EPS_Percentile":48.78048780487805,"EPS_Growth":2.8794788273615635,"Inst_Accumulation":-0.3,"Alpha_63D":0.26856124270378356,"Beta":1.01,"RSI_14Day":46.28,"SMA200_Dist":32.97,"MA_Slope_50":0.022638162427968136,"Volume_Expansion":false,"Net_Inst":98,"RS_vs_SP100":0.26986270112440547,"Return_63D":41.075854318659985,"RS_Rank":85.36585365853658,"Drawdown_%":14.007691603440506,"Composite_Score":57.68292682926829,"New_Composite_Score":56.646341463414636,"Earnings_Date":"2027-05-13","Daily_Composite_Score_delta":0.73},{"Ticker":"UNP","EPS_TTM":12.15,"EPS_Percentile":82.92682926829268,"EPS_Growth":-0.2707818930041153,"Inst_Accumulation":0.63,"Alpha_63D":0.005832082330449129,"Beta":0.96,"RSI_14Day":63.04,"SMA200_Dist":14.49,"MA_Slope_50":0.008561908773285215,"Volume_Expansion":false,"Net_Inst":68,"RS_vs_SP100":0.0006262486479613472,"Return_63D":14.152209071015587,"RS_Rank":56.09756097560976,"Drawdown_%":12.282282052287401,"Composite_Score":57.5609756097561,"New_Composite_Score":46.768292682926834,"Earnings_Date":"2026-07-23","Daily_Composite_Score_delta":0.61}];
+const authEl = document.getElementById("auth");
+const appEl = document.getElementById("app");
+const filterInput = document.getElementById("filterInput");
+const cardGrid = document.getElementById("cardGrid");
+const tableHead = document.getElementById("tableHead");
+const tableBody = document.getElementById("tableBody");
+const rowCount = document.getElementById("rowCount");
+const logoutBtn = document.getElementById("logoutBtn");
+const tableFilterInput = document.getElementById("tableFilterInput");
 
-// ---------- HELPERS ----------
-function tier(score){
- if(score>=80) return "Strong Buy";
- if(score>=60) return "Monitor";
- if(score>=40) return "Weak";
- return "Reduce";
-}
+// ===============================
+// SENTINEL SCHEMA ADAPTER (SOURCE OF TRUTH)
+// ===============================
+const schema = {
+  ticker: (r) => r.Ticker,
 
-function color(score){
- if(score>=80) return "green";
- if(score>=40) return "yellow";
- return "red";
-}
+  // Earnings proxy (since no EarningsDate exists in current dataset)
+  earningsScore: (r) => Number(r.EPS_Percentile ?? 0),
 
-function delta(v){
- if(v == null) return "—";
- return v>=0 ? "▲ +" + v.toFixed(1) : "▼ " + v.toFixed(1);
-}
+  // Scatter: momentum / growth relationship
+  scatterX: (r) => Number(r.EPS_Percentile ?? 0),
+  scatterY: (r) => Number(r.EPS_Growth ?? 0),
 
-// ---------- ANALYTICS ----------
-function card(r){
- return "<div class='card "+color(r.New_Score)+"'>" +
-  "<b>"+r.Ticker+"</b><br>" +
-  "<div class='score'>"+Number(r.New_Score).toFixed(1)+"</div>" +
-  delta(r.Delta)+"<br>" +
-  "<span class='small'>"+tier(r.New_Score)+"</span>" +
- "</div>";
-}
-
-document.getElementById("pf").innerHTML =
- rows.filter(r=>pf.has(r.Ticker)).map(card).join("");
-
-document.getElementById("wl").innerHTML =
- rows.filter(r=>wl.has(r.Ticker)).map(card).join("");
-
-// ---------- SIGNALS ----------
-function signalColor(s){
- if(s.includes("Momentum")) return "text-green";
- if(s.includes("Relative")) return "text-blue";
- if(s.includes("Institutional")) return "text-yellow";
- return "text-red";
-}
-
-function isBearish(t){
- return (
-  t.includes("Breakdown") ||
-  t.includes("Weak") ||
-  t.includes("Downtrend") ||
-  t.includes("Selling") ||
-  t.includes("Risk")
- );
-}
-
-let bullHTML = "";
-let bearHTML = "";
-
-signals.forEach(function(s){
-
- let bullLines = "";
- let bearLines = "";
-
- s.triggers.split(",").forEach(function(t){
-   const line = "<div class='"+signalColor(t)+"'>"+t+"</div>";
-   if(isBearish(t)) bearLines += line;
-   else bullLines += line;
- });
-
- if(bullLines){
-  bullHTML += "<div class='card'><b>"+s.ticker+"</b><br>"+bullLines+"</div>";
- }
- if(bearLines){
-  bearHTML += "<div class='card red'><b>"+s.ticker+"</b><br>"+bearLines+"</div>";
- }
-});
-
-document.getElementById("signalsGrid").innerHTML =
- "<h3>🔥 Bullish Signals</h3>" + bullHTML +
- "<h3 style='margin-top:20px'>⚠️ Bearish Signals</h3>" + bearHTML;
-
-// ---------- TRENDS ----------
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
-
-const groups = { leader:[], improving:[], weak:[], lag:[] };
-
-rows.forEach(function(r){
-  groups[Q(r)].push(r);
-});
-
-document.getElementById("leaders").innerHTML = groups.leader.map(card).join("");
-document.getElementById("improving").innerHTML = groups.improving.map(card).join("");
-document.getElementById("weakening").innerHTML = groups.weak.map(card).join("");
-document.getElementById("laggards").innerHTML = groups.lag.map(card).join("");
-
-// ✅ Scatter Chart (BALANCED + LEGEND ENHANCED)
-const chartEl = document.getElementById("chart");
-
-// ---------- LABEL SELECTION LOGIC ----------
-
-// Top 5 highest and bottom 5 lowest
-const sortedByScore = rows.slice().sort((a,b)=>b.New_Score - a.New_Score);
-const top5 = sortedByScore.slice(0,5);
-const bottom5 = sortedByScore.slice(-5);
-
-// Quadrant groups
-function Q(r){
- if(r.New_Score>=60 && r.MA_Slope>0) return "leader";
- if(r.New_Score<60 && r.MA_Slope>0) return "improving";
- if(r.New_Score>=60) return "weak";
- return "lag";
-}
-
-
-const chartGroups = {
-  leader: [],
-  improving: [],
-  weak: [],
-  lag: []
+  // Slope: fundamentals vs institutional flow
+  slopeX: (r) => Number(r.EPS_TTM ?? 0),
+  slopeY: (r) => Number(r.Inst_Accumulation ?? 0)
 };
 
+window.__ROWS__ = rows;
 
-rows.forEach(function(r){
-  chartGroups[Q(r)].push(r);
-});
-
-// pick specific counts
-const selected = []
-  .concat(top5)
-  .concat(bottom5)
-  .concat(chartGroups.leader.slice(0,3))
-  .concat(chartGroups.improving.slice(0,3))
-  .concat(chartGroups.weak.slice(0,2))
-  .concat(chartGroups.lag.slice(0,2));
-
-
-// ✅ deduplicate tickers
-const labelSet = new Set(selected.map(r => r.Ticker));
-
-
-// ---------- CHART ----------
-if (chartEl && window.Chart) {
-  new Chart(chartEl, {
-    type: "scatter",
-    data: {
-      datasets: [{
-        label: "Trend vs Score",
-
-        pointBackgroundColor: function(ctx){
-          return ctx.raw.pointBackgroundColor;
-        },
-
-        pointRadius: function(ctx){
-          return ctx.raw.isPortfolio ? 7 : 4;
-        },
-
-        pointBorderWidth: function(ctx){
-          return ctx.raw.isPortfolio ? 2 : 0;
-        },
-
-        pointBorderColor: function(ctx){
-          return ctx.raw.isPortfolio ? "#ffffff" : "transparent";
-        },
-
-        pointHoverRadius: 8,
-
-        data: rows.map(function(r){
-
-          let color = "cyan";
-
-          if(r.New_Score >= 60 && r.MA_Slope > 0) color = "#00e676";
-          else if(r.New_Score < 60 && r.MA_Slope > 0) color = "#00bcd4";
-          else if(r.New_Score >= 60) color = "#ffd600";
-          else color = "#f44336";
-
-          return {
-            x: r.MA_Slope || 0,
-            y: r.New_Score || 0,
-            label: r.Ticker,
-            pointBackgroundColor: color,
-            isPortfolio: pf.has(r.Ticker) || wl.has(r.Ticker), // ✅ portfolio + watchlist
-            showLabel: labelSet.has(r.Ticker) // ✅ controlled labeling
-          };
-        })
-      }]
-    },
-
-    options: {
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              const d = ctx.raw;
-              return (
-                d.label +
-                " | Score: " + d.y.toFixed(1) +
-                " | Trend: " + d.x.toFixed(3)
-              );
-            }
-          }
-        },
-
-        zoom: {
-          pan: { enabled:true, mode:'xy' },
-          zoom: {
-            wheel:{enabled:true},
-            pinch:{enabled:true},
-            mode:'xy'
-          }
-        },
-
-        legend: { display:false }
-      },
-
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: "Trend (MA Slope)",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" }
-        },
-
-        y: {
-          title: {
-            display: true,
-            text: "Score",
-            color: "#e0e0e0",
-            font: { size: 14, weight: "bold" }
-          },
-          ticks: { color:"#bbb" },
-          grid: { color:"#333" },
-          min:0,
-          max:100
-        }
-      }
-    },
-
-    plugins: [
-
-      // ✅ LABELS
-      {
-        id: 'pointLabels',
-        afterDatasetsDraw(chart) {
-          const ctx = chart.ctx;
-
-          chart.data.datasets[0].data.forEach(function(p,i){
-            if(!p.showLabel) return;
-
-            const meta = chart.getDatasetMeta(0).data[i];
-            const pos = meta.getProps(['x','y'], true);
-
-            ctx.fillStyle = "#ddd";
-            ctx.font = "10px sans-serif";
-            ctx.fillText(p.label, pos.x + 6, pos.y - 6);
-          });
-        }
-      },
-
-      // ✅ LEGEND (ENHANCED)
-     {
-  id: 'legendOverlay',
-  beforeDraw(chart) {
-    const ctx = chart.ctx;
-    const chartArea = chart.chartArea;
-
-    // ✅ Position in top-right corner
-    const x = chartArea.right - 180;
-    const y = chartArea.top + 10;
-
-    ctx.save();
-
-    // ✅ Background box (prevents clutter)
-    ctx.fillStyle = "rgba(20,20,20,0.85)";
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    ctx.roundRect(x - 10, y - 5, 190, 100, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    // ✅ Text styling
-    ctx.fillStyle = "#ddd";
-    ctx.font = "12px sans-serif";
-
-    let lineY = y + 10;
-
-    ctx.fillText("🟢 Leaders", x, lineY); lineY += 18;
-    ctx.fillText("🔵 Improving", x, lineY); lineY += 18;
-    ctx.fillText("🟡 Weakening", x, lineY); lineY += 18;
-    ctx.fillText("🔴 Laggards", x, lineY); lineY += 18;
-
-    // ✅ divider line
-    ctx.strokeStyle = "#555";
-    ctx.beginPath();
-    ctx.moveTo(x, lineY);
-    ctx.lineTo(x + 150, lineY);
-    ctx.stroke();
-
-    lineY += 15;
-
-    ctx.fillStyle = "#ccc";
-    ctx.font = "11px sans-serif";
-    ctx.fillText("⬤ White border = Portfolio / Watchlist", x, lineY);
-
-    ctx.restore();
-  }
+function scoreTier(score) {
+  if (score >= 70) return { label: "Strong Buy", style: "green" };
+  if (score >= 50) return { label: "Monitor", style: "blue" };
+  if (score >= 30) return { label: "Weak", style: "orange" };
+  return { label: "Reduce", style: "red" };
 }
 
-    ]
+function getTier(score) {
+  if (score >= 70) {
+    return {
+      label: "Strong Buy",
+      scoreColor: "#81c784"
+    };
+  }
+
+  if (score >= 50) {
+    return {
+      label: "Monitor",
+      scoreColor: "#90caf9"
+    };
+  }
+
+  if (score >= 30) {
+    return {
+      label: "Weak",
+      scoreColor: "#ffb74d"
+    };
+  }
+
+  return {
+    label: "Reduce",
+    scoreColor: "#ef9a9a"
+  };
+}
+
+function scoreColor(score) {
+  return getTier(score).scoreColor;
+}
+
+function fmt(v) {
+  if (v == null || Number.isNaN(v)) {
+    return "—";
+  }
+
+  return Number(v).toFixed(2);
+}
+
+function renderLoginScreen() {
+  authEl.innerHTML = '<div class="center-screen">' +
+    '<div class="auth-card">' +
+    '<h2>🔒 Login Required</h2>' +
+    '<p style="margin: 16px 0 24px; color: #9aa3b5;">Sign in with Google to view the report.</p>' +
+    '<button id="loginBtn" class="login-btn">Sign in with Google</button>' +
+    '</div>' +
+    '</div>';
+  document.getElementById("loginBtn").onclick = () => {
+    signInWithPopup(auth, provider);
+  };
+}
+
+function renderAccessDenied(email) {
+  authEl.innerHTML = '<div class="center-screen">' +
+    '<div class="auth-card">' +
+    '<h2>⛔ Access Denied</h2>' +
+    '<p>User ' + email + ' is not authorized to view this report.</p>' +
+    '</div>' +
+    '</div>';
+}
+
+function renderAuthError(err) {
+  authEl.innerHTML = '<div class="center-screen">' +
+    '<div class="auth-card">' +
+    '<h2>❌ Authentication Error</h2>' +
+    '<pre style="white-space: pre-wrap; color: #f88;">' + String(err.message || err) + '</pre>' +
+    '</div>' +
+    '</div>';
+}
+
+function formatValue(value, decimals = 2) {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toFixed(decimals);
+  return String(value);
+}
+
+function renderCards(data) {
+  const sorted = [...data].sort((a, b) => (b.Composite_Score || 0) - (a.Composite_Score || 0));
+  cardGrid.innerHTML = sorted.map((item) => {
+    const score = Number(item.Composite_Score || 0);
+    const tier = scoreTier(score);
+    return '<div class="ticker-card">' +
+      '<h2>' + (item.Ticker || "—") + '</h2>' +
+      '<p><strong>Score:</strong> ' + formatValue(score) + '</p>' +
+      '<p><span class="pill ' + tier.style + '">' + tier.label + '</span></p>' +
+      '<p><strong>RSI:</strong> ' + formatValue(item.RSI_14Day) + '</p>' +
+      '<p><strong>63D Return:</strong> ' + formatValue(item.Return_63D) + '%</p>' +
+      '</div>';
+  }).join('');
+}
+
+function renderTable(data) {
+  const headers = ["Ticker", "Composite_Score", "EPS_TTM", "RSI_14Day", "MA_Slope_50", "Drawdown_%", "Return_63D", "Alpha_63D", "RS_vs_SP100"];
+  tableHead.innerHTML = '<tr>' + headers.map((h) => '<th>' + h + '</th>').join('') + '</tr>';
+  tableBody.innerHTML = data.map((item) => {
+    return '<tr>' + headers.map((h, index) => {
+      const value = item[h];
+      return index === 0 ? '<td>' + (value || '—') + '</td>' : '<td>' + formatValue(value, 2) + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  rowCount.textContent = data.length + ' rows displayed';
+}
+
+
+function bootApp() {
+  authEl.innerHTML = '';
+  appEl.classList.remove('hidden');
+  renderCards(rows);
+  renderTable(rows);
+  const scatter = Chart.getChart("scatterChart");
+if (scatter) scatter.destroy();
+
+const slope = Chart.getChart("slopeChart");
+if (slope) slope.destroy();
+
+  initCharts(rows);
+  logoutBtn.onclick = async () => {
+    await signOut(auth);
+    window.location.reload();
+  };
+  tableFilterInput.addEventListener("input", () => {
+
+  const query = tableFilterInput.value.trim().toLowerCase();
+
+  const filtered = rows.filter(item =>
+    String(item.Ticker || "")
+      .toLowerCase()
+      .includes(query)
+  );
+
+  renderTable(filtered);
+
+});
+  filterInput.addEventListener('input', () => {
+    const query = filterInput.value.trim().toLowerCase();
+    const filtered = rows.filter((item) => {
+      return Object.values(item).some((value) => String(value || '').toLowerCase().includes(query));
+    });
+    renderCards(filtered);
+    renderTable(filtered);
+    initCharts(rows);
   });
 }
 
-// ---------- PORTFOLIO RISK (ENHANCED + BACKWARD SAFE) ----------
-const portfolioRows = rows.filter(r => pf.has(r.Ticker));
+//TO ADD COLORING SCHEMA TO SCATTER POINTS IN LINE WITH TIERING 
+// (STRONG BUY, MONITOR, WEAK, REDUCE)
+function getTierColor(score) {
+  if (score >= 70) return "#4ade80"; // Strong Buy
+  if (score >= 50) return "#60a5fa"; // Monitor
+  if (score >= 30) return "#fbbf24"; // Weak
+  return "#ef9a9a"; // Reduce
+}
 
-// ✅ preserve your original counts
-let greenCount = 0;
-let yellowCount = 0;
-let redCount = 0;
 
-// ✅ new scoring system
-let totalRiskPoints = 0;
-let riskHTML = "";
-let contributors = [];
 
-portfolioRows.forEach(function(r){
+function initCharts(rows) {
+  try {
 
-  let flags = [];
-  let risk = 0;
+  if (window.__chartsInitialized) return;
+window.__chartsInitialized = true;
 
-  // ✅ ORIGINAL COLOR CLASSIFICATION (PRESERVED)
-  if(r.New_Score >= 80) greenCount++;
-  else if(r.New_Score >= 40) yellowCount++;
-  else redCount++;
+  if (!rows || !rows.length) {
+  console.warn("No data available for charts");
+  return;
+}
+    // --- Earnings strip placeholder starts here---
+    const strip = document.getElementById("earningsStrip");
+    if (strip) {
+      const now = new Date();
+now.setHours(0, 0, 0, 0);
 
-  // ✅ SCORING MODEL (NEW)
-  if(r.New_Score < 40){
-    risk += 40;
-    flags.push("Weak Score");
+const in14 = new Date(now.getTime() + 14 * 86400000);
+
+const upcoming = rows
+  .filter(r => {
+    if (!r.Earnings_Date) return false;
+
+    const d = new Date(r.Earnings_Date);
+    if (isNaN(d)) return false;
+
+    return d >= now && d <= in14;
+  })
+  .sort((a, b) => new Date(a.Earnings_Date) - new Date(b.Earnings_Date))
+  .slice(0, 12);
+
+strip.innerHTML = upcoming
+  .map(r => {
+    return "<div style='padding:8px 12px;margin:4px;background:#1b2030;border-radius:10px;display:inline-block;'>"
+      + "<strong>" + (r.Ticker || "") + "</strong><br/>"
+      + "<span style='color:#8a97b3;font-size:12px;'>" + (r.Earnings_Date || "—") + "</span>"
+      + "</div>";
+  })
+  .join("");
+
+   
+    }
+
+    // --- Earnings strip placeholder ends here---
+
+       //Plugin for Quadrants in Charts starts here
+       //Plugin block for slope Chart starts here
+       const slopeQuadrantPlugin = {
+  id: "slopeQuadrants",
+
+  afterDraw(chart) {
+    if (chart.canvas.id !== "slopeChart") return;
+
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+
+    const xMid = (scales.x.min + scales.x.max) / 2;
+    const yMid = (scales.y.min + scales.y.max) / 2;
+
+    const xPixel = scales.x.getPixelForValue(xMid);
+    const yPixel = scales.y.getPixelForValue(yMid);
+
+    ctx.save();
+
+    // cross lines
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(xPixel, chartArea.top);
+    ctx.lineTo(xPixel, chartArea.bottom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, yPixel);
+    ctx.lineTo(chartArea.right, yPixel);
+    ctx.stroke();
+
+    // labels (INVESTOR SEMANTICS)
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui";
+
+    ctx.fillText("Q2 ⚠️ High quality but deteriorating", chartArea.left + 10, chartArea.top + 10);
+    ctx.fillText("Q1 🚀 Strong + improving (best stocks)", chartArea.right - 160, chartArea.top + 10);
+    ctx.fillText("Q3 ❌ Weak + declining", chartArea.left + 10, chartArea.bottom - 20);
+    ctx.fillText("Q4 🔄 Improving but low quality (speculative reversal)", chartArea.right - 160, chartArea.bottom - 20);
+
+    ctx.restore();
   }
-  else if(r.New_Score < 60){
-    risk += 20;
+};
+       //Plugin block for slope Chart ends here
+
+       //Plugin block for scatter Chart starts here
+       const rsiAlphaQuadrantPlugin = {
+  id: "rsiAlphaQuadrants",
+
+  afterDraw(chart) {
+    if (chart.canvas.id !== "scatterChart") return;
+
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+
+    const xMid = (scales.x.min + scales.x.max) / 2;
+    const yMid = (scales.y.min + scales.y.max) / 2;
+
+    const xPixel = scales.x.getPixelForValue(xMid);
+    const yPixel = scales.y.getPixelForValue(yMid);
+
+    ctx.save();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.moveTo(xPixel, chartArea.top);
+    ctx.lineTo(xPixel, chartArea.bottom);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(chartArea.left, yPixel);
+    ctx.lineTo(chartArea.right, yPixel);
+    ctx.stroke();
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui";
+
+    ctx.fillText("Q1 Overheated Alpha", chartArea.right - 160, chartArea.top + 10);
+    ctx.fillText("Q2 Alpha Accumulation", chartArea.left + 10, chartArea.top + 10);
+    ctx.fillText("Q3 Weak Zone", chartArea.left + 10, chartArea.bottom - 20);
+    ctx.fillText("Q4 Trap / Reversal", chartArea.right - 160, chartArea.bottom - 20);
+
+    ctx.restore();
   }
+};
+       //Plugin block for scatter Chart ends here
 
-  if(r.MA_Slope < 0){
-    risk += 30;
-    flags.push("Downtrend");
-  }
 
-  if(r.Drawdown_pct > 30){
-    risk += 30;
-    flags.push("Drawdown Risk");
-  }
 
-  totalRiskPoints += risk;
+    // --- Scatter Chart (Alpha vs RSI) ---
+    const scatterCtx = document.getElementById("scatterChart");
+    if (scatterCtx && window.Chart) {
 
-  // ✅ preserve your alert logic
-  if(flags.length){
-    riskHTML += "<div class='card red'>" +
-      "<b>" + r.Ticker + "</b><br>" +
-      flags.join("<br>") +
-    "</div>";
-  }
+    //Code for coloring points based on Composite_Score tiering 
+    // is added in the data mapping below, 
+    // using getTierColor function to assign colors according to the defined score tiers 
+    // (Strong Buy, Monitor, Weak, Reduce).
 
-  // ✅ NEW: contributor ranking
-  if(risk >= 40){
-    contributors.push({
-      ticker: r.Ticker,
-      risk: risk,
-      reasons: flags
-    });
-  }
+    
+// ===============================
+// SCATTER LEGEND (TIER COLORS ONLY) STARTS HERE
+// ===============================
+const legendEl = document.createElement("div");
+legendEl.style.display = "flex";
+legendEl.style.gap = "10px";
+legendEl.style.margin = "8px 0 12px 0";
+legendEl.style.flexWrap = "wrap";
+legendEl.style.fontSize = "12px";
+legendEl.style.color = "#e0e0e0";
 
+const legendItems = [
+  { label: "Strong Buy (70+)", color: "#81c784" },
+  { label: "Monitor (50-70)", color: "#90caf9" },
+  { label: "Weak (30-50)", color: "#ffb74d" },
+  { label: "Reduce (<30)", color: "#ef9a9a" }
+];
+
+legendItems.forEach(item => {
+  const el = document.createElement("div");
+  el.style.display = "flex";
+  el.style.alignItems = "center";
+  el.style.gap = "6px";
+
+  const dot = document.createElement("span");
+  dot.style.width = "10px";
+  dot.style.height = "10px";
+  dot.style.borderRadius = "50%";
+  dot.style.background = item.color;
+  dot.style.display = "inline-block";
+
+  const text = document.createElement("span");
+  text.innerText = item.label;
+
+  el.appendChild(dot);
+  el.appendChild(text);
+
+  legendEl.appendChild(el);
 });
 
-// ✅ FINAL SCORE (NEW)
-let avgRisk = 0;
+// attach legend ABOVE scatter canvas safely
+scatterCtx.parentNode.insertBefore(legendEl, scatterCtx);
 
-if(portfolioRows.length > 0){
-  avgRisk = Math.round(totalRiskPoints / portfolioRows.length);
+// ===============================
+// SCATTER LEGEND (TIER COLORS ONLY) ENDS HERE
+// ===============================
+
+      new Chart(scatterCtx, {
+        type: "scatter",
+        data: {
+        datasets: [{
+  label: "Alpha vs RSI",
+
+  data: rows.map(r => ({
+    x: Number(r.RSI_14Day ?? 0),
+    y: Number(r.Alpha_63D ?? 0),
+    ticker: r.Ticker ?? "",
+    score: Number(r.Composite_Score ?? 0)
+  })),
+  //plugins: [rsiAlphaQuadrantPlugin],   // ✅ Call to the custom quadrant plugin for scatter chart
+        
+  backgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+  pointBackgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+  pointBorderColor: "#0b1220",
+
+  pointBorderWidth: 1.2,
+
+  pointRadius: rows.map(r => {
+    const s = r.Composite_Score ?? 0;
+
+    if (s >= 70) return 8;   // Strong Buy (emphasis)
+    if (s >= 50) return 7;   // Monitor
+    if (s >= 30) return 6;   // Weak
+    return 5;                // Reduce
+  }),
+
+  hoverRadius: 10
+}]  
+        },
+      //  plugins: [],   // ✅ Call to the quadrant plugin is not needed for scatter, only slope chart
+        options: {
+        //Strict Visal Layer to overide for point dimensions in chart start here.
+        elements: {
+          point: {
+            radius: 6,              // FIX: stronger visibility
+            hoverRadius: 8,
+            borderWidth: 1.2
+            
+          }
+        },
+        //Strict Visual Layer to override for point dimensions in chart ends here.
+
+  responsive: true,
+
+  plugins: {
+    tooltip: {
+      callbacks: {
+        label(ctx) {
+          const d = ctx.raw || {};
+
+          const ticker = d.ticker || "—";
+          const rsi = d.x ?? "—";
+          const alpha = d.y ?? "—";
+          const score = d.score ?? "—";
+
+          return (
+            ticker +
+            " RSI=" + fmt(rsi) +
+            " α=" + fmt(alpha) +
+            " score=" + fmt(score)
+          );
+        }
+      }
+    }
+  },
+
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: "RSI (0–100)"
+      },
+      min: 0,
+      max: 100
+    },
+    y: {
+      title: {
+        display: true,
+        text: "Alpha (63D)"
+      }
+    }
+  }
+}
+        
+      });
+    }
+
+    // --- Slope Chart (MA Slope vs Composite) ---
+const slopeCtx = document.getElementById("slopeChart");
+if (slopeCtx && window.Chart) {
+
+  new Chart(slopeCtx, {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "MA Slope vs Composite",
+
+        data: rows.map(r => ({
+          x: Number(r.MA_Slope_50 ?? 0),
+          y: Number(r.Composite_Score ?? 0),
+          ticker: r.Ticker ?? "",
+          score: Number(r.Composite_Score ?? 0)
+        })),
+
+        // 🎯 UNIFIED TIER COLOR SYSTEM (same logic as scatter chart)
+        backgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+        pointBackgroundColor: rows.map(r => getTierColor(r.Composite_Score)),
+
+        // 🧠 visual clarity (match scatter UX)
+        pointBorderColor: "#0b1220",
+        pointBorderWidth: 1.2,
+
+        // 📈 tier-aware sizing (same architecture pattern)
+        pointRadius: rows.map(r => {
+          const s = r.Composite_Score ?? 0;
+
+          if (s >= 70) return 8;
+          if (s >= 50) return 7;
+          if (s >= 30) return 6;
+          return 5;
+        }),
+
+        hoverRadius: rows.map(r => {
+    const s = r.Composite_Score ?? 0;
+
+    if (s >= 70) return 11;
+    if (s >= 50) return 10;
+    if (s >= 30) return 9;
+    return 8;
+  })
+      }]
+    },
+        plugins: [slopeQuadrantPlugin],   // ✅ Call to the custom quadrant plugin for slope chart
+        options: {
+
+        // To FIX GLovbal ELEMENT COLLISION (CRITICAL) start here
+        elements: {
+  point: {
+    radius: 6,
+    hoverRadius: 10,
+    borderWidth: 1.2,
+    backgroundColor: undefined   // 🧠 IMPORTANT: prevent override bleed
+  }
+},
+  // To FIX GLovbal ELEMENT COLLISION (CRITICAL) start here
+  responsive: true,
+
+  plugins: {
+    legend: {
+      display: false
+    },
+
+    tooltip: {
+      callbacks: {
+        label(ctx) {
+          const d = ctx.raw || {};
+
+          const ticker = d.ticker || "—";
+          const slope = d.x ?? "—";
+          const score = d.y ?? "—";
+
+          return (
+            ticker +
+            " slope=" + fmt(slope) +
+            " score=" + fmt(score)
+          );
+        }
+      }
+    }
+  },
+
+  scales: {
+    x: {
+      title: {
+        display: true,
+        text: "MA Slope (50D)"
+      }
+    },
+    y: {
+      title: {
+        display: true,
+        text: "Composite Score"
+      }
+    }
+  }
+} 
+      });
+    }
+
+  } catch (e) {
+    console.error("Chart init failed:", e);
+  }
 }
 
-if(avgRisk > 100) avgRisk = 100;
+window.initCharts = initCharts;
+ 
 
-// ✅ LEVEL (slightly refined)
-let riskLevel = "LOW";
 
-if(avgRisk >= 60) riskLevel = "HIGH";
-else if(avgRisk >= 30) riskLevel = "MODERATE";
-
-// ✅ UPDATED SUMMARY (MERGED OLD + NEW)
-document.getElementById("riskSummary").innerHTML =
-  "<b>Risk Score: " + avgRisk + " / 100</b><br><br>" +
-  "Level: " + riskLevel + "<br><br>" +
-  "Exposure → " +
-  "🟢 " + greenCount +
-  " | 🟡 " + yellowCount +
-  " | 🔴 " + redCount;
-
-// ✅ TOP CONTRIBUTORS (NEW INSIGHT)
-contributors = contributors
-  .sort(function(a,b){ return b.risk - a.risk; })
-  .slice(0,5);
-
-// ✅ MERGE alerts + contributors
-document.getElementById("riskList").innerHTML =
-  contributors.length
-    ? contributors.map(function(c){
-        return "<div class='card red'>" +
-          "<b>" + c.ticker + "</b><br>" +
-          c.reasons.join("<br>") +
-        "</div>";
-      }).join("")
-    : "<span class='small'>No major risks detected</span>";
-
-// ---------- TABS ----------
-function show(id,el){
- document.getElementById("analytics").classList.add("hidden");
- document.getElementById("signals").classList.add("hidden");
- document.getElementById("trends").classList.add("hidden");
- document.getElementById("risk").classList.add("hidden");
-
- document.getElementById(id).classList.remove("hidden");
-
- document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
- el.classList.add("active");
-}
-
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    renderLoginScreen();
+    return;
+  }
+  try {
+    const email = user.email;
+    const whitelistRef = doc(db, 'whitelist', email);
+    const whitelistSnap = await getDoc(whitelistRef);
+    if (!whitelistSnap.exists()) {
+      renderAccessDenied(email);
+      return;
+    }
+    bootApp();
+  } catch (err) {
+    renderAuthError(err);
+    console.error(err);
+  }
+});
 </script>
-
 </body>
 </html>
