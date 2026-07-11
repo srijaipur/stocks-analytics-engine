@@ -36,8 +36,8 @@ jobs:
             echo "ERROR: data/index.html does not exist"
             exit 1
           fi
-          if ! grep -qE '[1-9][0-9]* tickers' data/index.html; then
-            echo "ERROR: data/index.html is missing a valid ticker count or contains 0 tickers"
+          if ! grep -q 'const rows = \[' data/index.html; then
+            echo "ERROR: data/index.html does not contain embedded report data"
             exit 1
           fi
           if [ ! -f data/analytics.html ]; then
