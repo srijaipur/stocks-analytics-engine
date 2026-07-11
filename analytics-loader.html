@@ -9,14 +9,25 @@
 
     <script>
       (async () => {
+        const IS_GITHUB_PAGES = location.hostname.endsWith("github.io");
+
+const BASE = IS_GITHUB_PAGES
+  ? "/stocks-analytics-engine"
+  : "";
+
+const LOGIN_URL = `${BASE}/login.html`;
+
+const ANALYTICS_ENDPOINT = IS_GITHUB_PAGES
+  ? `${BASE}/analytics.html`
+  : "/analytics";
         const token = localStorage.getItem("idToken");
 
         if (!token) {
-          window.location.href = "/login.html";
+          window.location.href = LOGIN_URL;
           return;
         }
 
-        const res = await fetch("/analytics", {
+        const res = await fetch(ANALYTICS_ENDPOINT, {
           headers: {
             Authorization: "Bearer " + token,
           },
@@ -24,7 +35,7 @@
 
         if (res.status === 401) {
           localStorage.removeItem("idToken");
-          window.location.href = "/login.html";
+          window.location.href = LOGIN_URL;
           return;
         }
 
