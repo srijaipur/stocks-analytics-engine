@@ -1,0 +1,60 @@
+name: Republish Existing Reports
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  republish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify generated artifacts exist
+        run: |
+          if [ ! -f data/report.html ]; then
+            echo "ERROR: data/report.html missing"
+            exit 1
+          fi
+
+          if [ ! -f data/analytics.html ]; then
+            echo "ERROR: data/analytics.html missing"
+            exit 1
+          fi
+
+      - name: Copy report to root index
+        run: |
+          cp data/report.html data/index.html
+
+      - name: Validate report
+        run: |
+          if ! grep -q 'const rows = \[' data/index.html; then
+            echo "ERROR: Embedded report data missing"
+            exit 1
+          fi
+
+          if ! grep -q 'window.__ANALYTICS__' data/analytics.html; then
+            echo "ERROR: Analytics payload missing"
+            exit 1
+          fi
+
+          if ! grep -q 'signInWithPopup' data/report.html; then
+            echo "ERROR: Report is not auth protected"
+            exit 1
+          fi
+
+          if grep -q -E 'firebase-admin|serviceAccount|FIREBASE_SERVICE_ACCOUNT_JSON|private_key' data/report.html; then
+            echo "ERROR: Sensitive credentials detected"
+            exit 1
+          fi
+
+      - name: Publish GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./data
+          destination_dir: .
+          clean: true
