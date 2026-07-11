@@ -97,6 +97,9 @@ function buildHtml(data) {
 <html>
 
 <head>
+<script>
+window.__ANALYTICS__ = ${safe};
+</script>
 
 <meta charset="UTF-8">
 
