@@ -17,4 +17,3 @@ export async function getPrices(ticker) {
     .map((bar) => ({ date: bar.date, close: bar.close, volume: bar.volume }))
     .sort((a, b) => a.date - b.date);
 }
-
