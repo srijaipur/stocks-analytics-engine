@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Loading Index Comparison...</title>
+  </head>
+  <body style="background: #0f1117; color: white; font-family: Arial; padding: 40px">
+    <h2>Loading index comparison...</h2>
+
+    <script>
+      (async () => {
+        const IS_GITHUB_PAGES = location.hostname.endsWith("github.io");
+
+const BASE = IS_GITHUB_PAGES
+  ? "/stocks-analytics-engine"
+  : "";
+
+const LOGIN_URL = `${BASE}/login.html`;
+
+const INDEXCHARTING_ENDPOINT = IS_GITHUB_PAGES
+  ? `${BASE}/indexcharting.html`
+  : "/indexcharting";
+        const token = localStorage.getItem("idToken");
+
+        if (!token) {
+          window.location.href = LOGIN_URL;
+          return;
+        }
+
+        const res = await fetch(INDEXCHARTING_ENDPOINT, {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("idToken");
+          window.location.href = LOGIN_URL;
+          return;
+        }
+
+        const html = await res.text();
+
+        document.open();
+        document.write(html);
+        document.close();
+        
+      })();
+    </script>
+  </body>
+</html>
