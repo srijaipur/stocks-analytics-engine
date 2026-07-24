@@ -83,11 +83,7 @@ async function readData() {
     }
   });
 
-  const benchmarks = {};
-
-for (const family of BENCHMARK_FAMILIES) {
-  benchmarks[family] = [];
-}
+  const benchmarks = loadBenchmarkDefinitions();
 
 return {
   rows,
@@ -119,6 +115,32 @@ const BENCHMARK_FAMILIES = [
   "MEDIA",
   "REALESTATE",
 ];
+
+// ======================================================
+// LOAD BENCHMARK DEFINITIONS
+// ======================================================
+//
+// Placeholder implementation.
+//
+// Phase 5.1:
+// Returns empty benchmark membership lists.
+//
+// Future phases will replace this implementation with
+// Firestore-backed configuration without changing the
+// rest of the visualization pipeline.
+//
+
+function loadBenchmarkDefinitions() {
+
+  const benchmarks = {};
+
+  for (const family of BENCHMARK_FAMILIES) {
+    benchmarks[family] = [];
+  }
+
+  return benchmarks;
+}
+
 
 // ======================================================
 // BUILD HTML

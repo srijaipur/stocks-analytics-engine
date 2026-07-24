@@ -191,7 +191,13 @@ function buildScreenerUrl(config, startRow = 1) {
   if (config.sectors.length > 0) {
     codes.push(config.sectors.map((s) => SECTOR_MAP[s]).join("|"));
   }
-  return `/screener.ashx?v=111&f=${codes.join(",")}&ft=4&o=-marketcap&r=${startRow}`;
+  const url =
+  `/screener.ashx?v=111&f=${codes.join(",")}&ft=4&o=-marketcap&r=${startRow}`;
+
+//console.log("[DEBUG] buildScreenerUrl():");
+console.log(url);
+
+return url;
 }
 
 async function fetchAllCandidates(config) {
@@ -200,10 +206,20 @@ async function fetchAllCandidates(config) {
   while (true) {
     const { data: html } = await withRetry(() => finvizClient.get(buildScreenerUrl(config, row)));
     const $ = cheerio.load(html);
+
+    const firstRow = $("table.screener_table tr").eq(1);
+
+    //console.log("\n========== FIRST SCREENER ROW ==========");
+    //console.log(firstRow.html());
+    //console.log("========================================\n");
+
     const rows = $("table.screener_table tr").not(":first-child");
     if (rows.length === 0) break;
     rows.each((_, tr) => {
-      const ticker = $(tr).find("td:nth-child(2) a").text().trim();
+      
+    const ticker = $(tr).find("td:nth-child(2) a.tab-link").text().trim();
+
+      console.log("[DEBUG] Extracted ticker:", ticker);
       if (ticker) tickers.add(ticker);
     });
     row += 20;
@@ -214,7 +230,10 @@ async function fetchAllCandidates(config) {
 }
 
 async function fetchQuote(ticker) {
-  const { data: html } = await withRetry(() => finvizClient.get(`/quote.ashx?t=${ticker}`));
+  //console.log("[DEBUG] Quote URL:",finvizClient.defaults.baseURL + `/quote.ashx?t=${ticker}`);
+
+ //console.log("[DEBUG] Quote ticker:",ticker);
+  const { data: html } =  await withRetry(() => finvizClient.get(`/quote.ashx?t=${ticker}`));
   const $ = cheerio.load(html);
   const result = {};
   let lastKey = "";
