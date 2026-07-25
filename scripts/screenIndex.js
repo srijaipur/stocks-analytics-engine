@@ -101,7 +101,7 @@ const INDEX_CONFIGS = {
 
   ndx: {
     label: "Nasdaq 100",
-    sheetName: "Nasdaq",
+    sheetName: "Nasdaq_100",
     staticFilters: [
       { code: "idx_ndx", label: "Index", value: "Nasdaq 100" },
       { code: "sh_price_o10", label: "Price min", value: "> $10" },
@@ -300,10 +300,25 @@ async function runScreener(config, sp100Prices, workbook) {
   sheet.spliceRows(1, sheet.rowCount);
 
   // Column A: header + tickers
-  sheet.getRow(1).getCell(1).value = "Ticker";
+  /*sheet.getRow(1).getCell(1).value = "Ticker";
   top.forEach((r, i) => {
     sheet.getRow(i + 2).getCell(1).value = r.ticker;
-  });
+  });*/
+  // Benchmark results table
+
+sheet.getRow(1).getCell(1).value = "Ticker";
+sheet.getRow(1).getCell(2).value = "Alpha";
+sheet.getRow(1).getCell(5).value = "Beta";
+sheet.getRow(1).getCell(6).value = "RSI";
+
+top.forEach((r, i) => {
+  const row = sheet.getRow(i + 2);
+
+  row.getCell(1).value = r.ticker;
+  row.getCell(2).value = r.alpha;
+  row.getCell(5).value = r.beta;
+  row.getCell(6).value = r.rsi14;
+});
 
   // Columns C–D: criteria panel — labels/values come directly from staticFilters
   const runDate = new Date().toISOString().slice(0, 10);

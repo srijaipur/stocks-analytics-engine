@@ -83,7 +83,7 @@ async function readData() {
     }
   });
 
-  const benchmarks = loadBenchmarkDefinitions();
+  const benchmarks = loadBenchmarkDefinitions(wb);
 
 return {
   rows,
@@ -129,14 +129,64 @@ const BENCHMARK_FAMILIES = [
 // Firestore-backed configuration without changing the
 // rest of the visualization pipeline.
 //
+function loadBenchmarkSheet(wb, sheetName) {
+  const sheet = wb.getWorksheet(sheetName);
 
-function loadBenchmarkDefinitions() {
+  if (!sheet) {
+    console.warn(`[Benchmark] Worksheet "${sheetName}" not found.`);
+    return [];
+  }
+
+  const results = [];
+
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    const ticker = String(row.getCell(1).value ?? "").trim();
+    const alpha = Number(row.getCell(2).value ?? NaN);
+    const beta = Number(row.getCell(5).value ?? NaN);
+    const rsi = Number(row.getCell(6).value ?? NaN);
+
+    if (!ticker) return;
+
+    results.push({
+      ticker,
+      alpha,
+      beta,
+      rsi,
+    });
+  });
+
+  return results;
+}
+
+function loadBenchmarkDefinitions(wb) {
 
   const benchmarks = {};
 
   for (const family of BENCHMARK_FAMILIES) {
     benchmarks[family] = [];
   }
+
+  benchmarks.RUSSELL = loadBenchmarkSheet(
+    wb,
+    "Russel_2000"
+);
+  benchmarks.DOWJONES = loadBenchmarkSheet(
+    wb,
+    "Dow_Jones"
+  );
+
+  benchmarks.NASDAQ = loadBenchmarkSheet(
+    wb,
+    "Nasdaq_100"
+  );
+
+  benchmarks.SP100 = loadBenchmarkSheet(
+    wb,
+    "SP_100"
+  );
+
 
   return benchmarks;
 }
