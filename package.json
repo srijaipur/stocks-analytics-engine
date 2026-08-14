@@ -24,6 +24,8 @@
     "visualize:serve": "node --use-system-ca visualizer.js --serve",
     "visualize-report": "node --use-system-ca visualizer-report.js",
     "visualize-report:serve": "node --use-system-ca visualizer-report.js --serve",
+    "visualize:rotation": "node --use-system-ca visualizer-marketrotation.js",
+    "visualize:rotation:serve": "node --use-system-ca visualizer-marketrotation.js --serve",
     "build:report": "node --use-system-ca visualizer-report.js",
     "build:analytics": "node --use-system-ca visualizer-analytics.js",
     "build:nightly": "node scripts/createWorkbook.js && node --experimental-specifier-resolution=node index.js && npm run build:report && npm run build:analytics && cp data/report.html data/index.html"

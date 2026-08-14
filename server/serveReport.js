@@ -155,6 +155,22 @@ app.get("/analytics-loader.html", (req, res) => {
   res.sendFile(process.cwd() + "/data/analytics-loader.html");
 });
 
+app.get("/marketrotation", authMiddleware, requireRole("user"), async (req, res) => {
+  console.log("AUTH HEADER:", req.headers.authorization);
+  console.log("ROUTE HIT /marketrotation");
+  console.log("USER:", req.user);
+
+  try {
+    res.sendFile(process.cwd() + "/data/marketrotation.html");
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load market rotation" });
+  }
+});
+
+app.get("/marketrotation-loader.html", (req, res) => {
+  res.sendFile(process.cwd() + "/data/marketrotation-loader.html");
+});
+
 console.log("STEP C: routes defined up to loader endpoints");
 
 /**
