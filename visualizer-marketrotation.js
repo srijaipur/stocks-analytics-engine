@@ -622,6 +622,17 @@ footer {
   </div>
 </header>
 
+<header>
+  <h1>
+    📊 Stocks Analytics Dashboard
+  </h1>
+  
+   <a class="report-link" href="report-loader.html">
+  ← General Stock Universe Report 
+</a>
+
+</header>
+
 <div class="tabs">
   <button class="tab-btn" data-tab="overview">Overview</button>
   <button class="tab-btn" data-tab="sectors">Sectors</button>

@@ -624,9 +624,11 @@ canvas {
 
     </div>
 
-    <canvas
-      id="quadrantChart"
-    ></canvas>
+    <div style="height: 420px;">
+      <canvas
+        id="quadrantChart"
+      ></canvas>
+    </div>
 
   </div>
 
@@ -2129,11 +2131,15 @@ ctx.fillText(
 
 ],
 
-    options: {
+  options: {
 
-      responsive: true,
+  responsive: true,
 
-      plugins: {
+  maintainAspectRatio: true,
+
+  aspectRatio: 1.5,
+
+  plugins: {
 
         legend: {
 

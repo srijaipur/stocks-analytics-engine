@@ -624,9 +624,11 @@ canvas {
 
     </div>
 
-    <canvas
-      id="quadrantChart"
-    ></canvas>
+    <div style="height: 420px;">
+      <canvas
+        id="quadrantChart"
+      ></canvas>
+    </div>
 
   </div>
 

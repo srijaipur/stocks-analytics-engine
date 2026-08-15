@@ -123,6 +123,11 @@ function buildHtml(rows) {
   Advanced Anlytical Signals →
 </a>
 </div>
+<div>
+  <a class="analytics-link" href="marketrotation-loader.html">
+  Indices & Sectoral Market Rotation →
+</a>
+</div>
   <button id="logoutBtn" class="logout-btn">Logout</button>
 </header>
 <div class="page">
