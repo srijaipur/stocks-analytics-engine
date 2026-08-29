@@ -50,12 +50,17 @@ export function computeRiskMetrics(stock) {
 }
 
 /**
- * Sharpe Ratio: (Return - Risk-Free) / Volatility
- * MVP approximation: Use Beta as volatility proxy, Return_63D as return
+ * Sharpe Ratio MVP proxy:
+ * (Annualized Return - Risk-Free Rate) / Beta
+ *
+ * NOTE:
+ * This is not a textbook Sharpe ratio because historical
+ * return volatility is not available in the current data model.
+ * Beta is used as a volatility proxy.
  */
 function computeSharpeRatio(return63d, beta) {
   const riskFreeRate = 0.043; // 4.3% annual
-  const annualReturn = (return63d / 63) * 252; // Annualize 63-day return
+  const annualReturn = (return63d / 100) * (252 / 63); // Annualize 63-day return
   const volatility = beta || 1.0;
 
   if (volatility === 0) return 0;
@@ -63,12 +68,16 @@ function computeSharpeRatio(return63d, beta) {
 }
 
 /**
- * Sortino Ratio: (Return - Risk-Free) / Downside Volatility
- * MVP approximation: Penalize downside more than upside
+ * Sortino Ratio MVP proxy:
+ * (Annualized Return - Risk-Free Rate) / Downside Risk Proxy
+ *
+ * NOTE:
+ * Historical downside-return volatility is not available in the
+ * current data model. Beta is adjusted by drawdown as a downside-risk proxy.
  */
 function computeSortinoRatio(return63d, beta, drawdown) {
   const riskFreeRate = 0.043;
-  const annualReturn = (return63d / 63) * 252;
+  const annualReturn = (return63d / 100) * (252 / 63);
   // Downside volatility is higher risk: multiply beta by drawdown factor
   const downsideVolatility = beta * (1 + drawdown / 100);
 
@@ -81,10 +90,10 @@ function computeSortinoRatio(return63d, beta, drawdown) {
  * Higher is better; >1.0 is good
  */
 function computeCalmarRatio(return63d, drawdown) {
-  const annualReturn = (return63d / 63) * 252;
+  const annualReturn = (return63d / 100) * (252 / 63);
 
-  if (Math.abs(drawdown) < 0.01) return 100; // Avoid division by zero
-  return annualReturn / Math.abs(drawdown);
+  if (Math.abs(drawdown) < Number.EPSILON) return 100; // Avoid division by zero
+  return annualReturn / (Math.abs(drawdown) / 100);
 }
 
 /**

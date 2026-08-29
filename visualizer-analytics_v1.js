@@ -624,11 +624,12 @@ canvas {
 
     </div>
 
-    <div style="height: 420px;">
+    
       <canvas
-        id="quadrantChart"
-      ></canvas>
-    </div>
+  id="quadrantChart"
+  style="display:block; width:100%; height:420px;"
+></canvas>
+    
 
   </div>
 
@@ -687,11 +688,11 @@ canvas {
       </div>
 
     </div>
-
-    <canvas
-      id="rsiRegimeChart"
-      height="130"
-    ></canvas>
+<div style="width: 100%; height: 420px; position: relative;">
+  <canvas
+    id="rsiRegimeChart"
+  ></canvas>
+</div>
 
   </div>
 
@@ -839,7 +840,6 @@ function bootAuthenticatedApp() {
 
   renderRisk();
 
-  renderTrendChart();
 }
 
 // ======================================================
@@ -1220,7 +1220,9 @@ function renderSignals() {
   // ============================
   const sortedDecisions = [...decisions].sort((a, b) => b.confidence - a.confidence);
 
-  let tableHTML = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+  
+  
+  let tableHTML = '<div style="grid-column: 1 / -1; width: 100%; min-width: 0; margin-bottom: 24px;"><h3>📋 Institutional Signal Assessment</h3><div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
   tableHTML += '<thead><tr style="background: #1d2330; border-bottom: 1px solid #333;">';
   tableHTML += '<th style="padding: 12px; text-align: left;">Ticker</th>';
   tableHTML += '<th style="padding: 12px; text-align: center;">Signal</th>';
@@ -1244,7 +1246,7 @@ function renderSignals() {
     tableHTML += '</tr>';
   });
 
-  tableHTML += '</tbody></table></div>';
+  tableHTML += '</tbody></table></div></div>';
   grid.innerHTML = summaryHTML + tableHTML;
 }
 
@@ -1360,7 +1362,8 @@ function renderRisk() {
   
   function computeSharpeRatio(return63d, beta) {
     const riskFreeRate = 0.043;
-    const annualReturn = (return63d / 63) * 252;
+    //const annualReturn = (return63d / 63) * 252;
+    const annualReturn = ((return63d / 100) / 63) * 252;
     const volatility = beta || 1.0;
     if (volatility === 0) return 0;
     return (annualReturn - riskFreeRate) / volatility;
@@ -1368,17 +1371,18 @@ function renderRisk() {
 
   function computeSortinoRatio(return63d, beta, drawdown) {
     const riskFreeRate = 0.043;
-    const annualReturn = (return63d / 63) * 252;
+    //const annualReturn = (return63d / 63) * 252;
+    const annualReturn = ((return63d / 100) / 63) * 252;
     const downsideVolatility = beta * (1 + drawdown / 100);
     if (downsideVolatility === 0) return 0;
     return (annualReturn - riskFreeRate) / downsideVolatility;
   }
 
   function computeCalmarRatio(return63d, drawdown) {
-    const annualReturn = (return63d / 63) * 252;
-    if (Math.abs(drawdown) < 0.01) return 100;
-    return annualReturn / Math.abs(drawdown);
-  }
+  const annualReturn = ((return63d / 100) / 63) * 252;
+  if (Math.abs(drawdown) < 0.01) return 100;
+  return annualReturn / (Math.abs(drawdown) / 100);
+}
 
   function estimateWinRate(stock) {
     const rsi = stock.RSI_14Day || 50;
@@ -1470,7 +1474,8 @@ function renderRisk() {
   // ============================
   // BUILD RISK/REWARD TABLE
   // ============================
-  let tableHTML = '<div style="margin-bottom: 24px;"><h3>📋 Stock-Level Risk Assessment</h3>';
+  
+  let tableHTML = '<div style="grid-column: 1 / -1; width: 100%; min-width: 0; margin-bottom: 24px;"><h3>📋 Stock-Level Risk Assessment</h3>';
   tableHTML += '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
   tableHTML += '<thead><tr style="background: #1d2330; border-bottom: 1px solid #333;">';
   tableHTML += '<th style="padding: 12px; text-align: left;">Ticker</th>';
@@ -1531,6 +1536,29 @@ function renderRisk() {
 // ======================================================
 
 function renderTrendChart() {
+console.log(
+  "[SENTINEL] renderTrendChart ENTER",
+  {
+    time:
+      new Date().toISOString(),
+
+    regimePanels:
+      [...document.querySelectorAll("#trends h2")]
+        .filter(h =>
+          h.textContent.includes(
+            "Trend Regime Classification"
+          )
+        ).length,
+
+    trendsActive:
+      document
+        .getElementById("trends")
+        ?.classList.contains("active"),
+
+    caller:
+      new Error().stack
+  }
+);
 
   renderRegimeTable();
 
@@ -1546,6 +1574,28 @@ function renderTrendChart() {
 // ======================================================
 
 function renderRegimeTable() {
+
+console.log(
+  "[SENTINEL] renderRegimeTable ENTER",
+  {
+    existingPanels:
+      document
+        .querySelectorAll(
+          '#trends h2'
+        )
+        .length,
+
+    existingRegimePanels:
+      [...document.querySelectorAll('#trends h2')]
+        .filter(h =>
+          h.textContent.includes(
+            "Trend Regime Classification"
+          )
+        ).length
+  }
+);
+
+
   const rows = (window.__ANALYTICS__ && window.__ANALYTICS__.rows) || [];
   if (!Array.isArray(rows)) return;
 
@@ -1668,8 +1718,9 @@ function renderRegimeTable() {
   // BUILD REGIME PANEL
   // ============================
   
-  let regimePanel = '<div style="margin-bottom: 24px;">';
-  regimePanel += '<h2>🔄 Trend Regime Classification</h2>';
+  let regimePanel =
+  '<div data-sentinel="trend-regime-panel" style="margin-bottom: 24px;">';
+regimePanel += '<h2>🔄 Trend Regime Classification</h2>';
   
   // Regime Summary Cards
   regimePanel += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">';
@@ -1731,12 +1782,25 @@ function renderRegimeTable() {
   regimePanel += '</tbody></table></div>';
   regimePanel += '</div>';
 
-  // Insert regime panel before existing trend charts
-  const trendsDiv = document.getElementById("trends");
-  if (trendsDiv) {
-    const existingHTML = trendsDiv.innerHTML;
-    trendsDiv.innerHTML = regimePanel + existingHTML;
+  // Insert exactly one regime panel before existing trend charts
+const trendsDiv = document.getElementById("trends");
+
+if (trendsDiv) {
+
+  const existingRegimePanel =
+    trendsDiv.querySelector(
+      '[data-sentinel="trend-regime-panel"]'
+    );
+
+  if (existingRegimePanel) {
+    existingRegimePanel.remove();
   }
+
+  trendsDiv.insertAdjacentHTML(
+    "afterbegin",
+    regimePanel
+  );
+}
 }
 
 
@@ -2137,7 +2201,7 @@ ctx.fillText(
 
   maintainAspectRatio: true,
 
-  aspectRatio: 1.5,
+  aspectRatio: 2.0,
 
   plugins: {
 
