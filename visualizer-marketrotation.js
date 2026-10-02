@@ -116,7 +116,7 @@ async function fetchMarketRotationData() {
       const prices = await withRetry(async () => {
         const queryOptions = {
           period1: dayjs().startOf("year").toDate(),
-          period2: new Date(),
+          period2: dayjs().startOf("day").toDate(),
           interval: "1d",
         };
         const result = await yahooFinance.historical(inst.ticker, queryOptions);
