@@ -56,7 +56,10 @@
 
           localStorage.setItem("idToken", token);
 
-          window.location.href = "/report-loader.html";
+          const BASE = location.hostname.endsWith("github.io")
+            ? "/stocks-analytics-engine"
+            : "";
+          window.location.href = `${BASE}/report-loader.html`;
         } catch (err) {
           console.error(err);
 
