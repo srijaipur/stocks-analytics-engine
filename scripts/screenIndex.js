@@ -203,7 +203,7 @@ async function fetchAllCandidates(config) {
     const rows = $("table.screener_table tr").not(":first-child");
     if (rows.length === 0) break;
     rows.each((_, tr) => {
-      const ticker = $(tr).find("td:nth-child(2) a").text().trim();
+      const ticker = $(tr).find("td:nth-child(2) a.tab-link").text().trim();
       if (ticker) tickers.add(ticker);
     });
     row += 20;
@@ -278,7 +278,7 @@ async function runScreener(config, sp100Prices, workbook) {
   // Write to sheet
   let sheet = workbook.getWorksheet(config.sheetName);
   if (!sheet) sheet = workbook.addWorksheet(config.sheetName);
-  sheet.spliceRows(1, sheet.rowCount);
+  for (let r = 2; r <= Math.max(sheet.rowCount, config.topN + 1); r++) sheet.getRow(r).getCell(1).value = null;
 
   // Column A: header + tickers
   sheet.getRow(1).getCell(1).value = "Ticker";
