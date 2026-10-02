@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Loading Market Rotation...</title>
+  </head>
+  <body style="background: #0f1117; color: white; font-family: Arial; padding: 40px">
+    <h2>Loading market rotation analysis...</h2>
+
+    <script>
+      (async () => {
+        const IS_GITHUB_PAGES = location.hostname.endsWith("github.io");
+
+const BASE = IS_GITHUB_PAGES
+  ? "/stocks-analytics-engine"
+  : "";
+
+const LOGIN_URL = `${BASE}/login.html`;
+
+const MARKETROTATION_ENDPOINT = IS_GITHUB_PAGES
+  ? `${BASE}/marketrotation.html`
+  : "/marketrotation";
+        const token = localStorage.getItem("idToken");
+
+        if (!token) {
+          window.location.href = LOGIN_URL;
+          return;
+        }
+
+        const res = await fetch(MARKETROTATION_ENDPOINT, {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        });
+
+        if (res.status === 401) {
+          localStorage.removeItem("idToken");
+          window.location.href = LOGIN_URL;
+          return;
+        }
+
+        const html = await res.text();
+
+        document.open();
+        document.write(html);
+        document.close();
+        
+      })();
+    </script>
+  </body>
+</html>
