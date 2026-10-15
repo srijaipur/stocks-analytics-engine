@@ -101,7 +101,7 @@ const INDEX_CONFIGS = {
 
   ndx: {
     label: "Nasdaq 100",
-    sheetName: "Nasdaq",
+    sheetName: "Nasdaq_100",
     staticFilters: [
       { code: "idx_ndx", label: "Index", value: "Nasdaq 100" },
       { code: "sh_price_o10", label: "Price min", value: "> $10" },
@@ -191,7 +191,13 @@ function buildScreenerUrl(config, startRow = 1) {
   if (config.sectors.length > 0) {
     codes.push(config.sectors.map((s) => SECTOR_MAP[s]).join("|"));
   }
-  return `/screener.ashx?v=111&f=${codes.join(",")}&ft=4&o=-marketcap&r=${startRow}`;
+  const url =
+  `/screener.ashx?v=111&f=${codes.join(",")}&ft=4&o=-marketcap&r=${startRow}`;
+
+//console.log("[DEBUG] buildScreenerUrl():");
+console.log(url);
+
+return url;
 }
 
 async function fetchAllCandidates(config) {
@@ -200,6 +206,7 @@ async function fetchAllCandidates(config) {
   while (true) {
     const { data: html } = await withRetry(() => finvizClient.get(buildScreenerUrl(config, row)));
     const $ = cheerio.load(html);
+
     const rows = $("table.screener_table tr").not(":first-child");
     if (rows.length === 0) break;
     rows.each((_, tr) => {
@@ -214,7 +221,10 @@ async function fetchAllCandidates(config) {
 }
 
 async function fetchQuote(ticker) {
-  const { data: html } = await withRetry(() => finvizClient.get(`/quote.ashx?t=${ticker}`));
+  //console.log("[DEBUG] Quote URL:",finvizClient.defaults.baseURL + `/quote.ashx?t=${ticker}`);
+
+ //console.log("[DEBUG] Quote ticker:",ticker);
+  const { data: html } =  await withRetry(() => finvizClient.get(`/quote.ashx?t=${ticker}`));
   const $ = cheerio.load(html);
   const result = {};
   let lastKey = "";
@@ -278,13 +288,28 @@ async function runScreener(config, sp100Prices, workbook) {
   // Write to sheet
   let sheet = workbook.getWorksheet(config.sheetName);
   if (!sheet) sheet = workbook.addWorksheet(config.sheetName);
-  for (let r = 2; r <= Math.max(sheet.rowCount, config.topN + 1); r++) sheet.getRow(r).getCell(1).value = null;
+  sheet.spliceRows(1, sheet.rowCount);
 
   // Column A: header + tickers
-  sheet.getRow(1).getCell(1).value = "Ticker";
+  /*sheet.getRow(1).getCell(1).value = "Ticker";
   top.forEach((r, i) => {
     sheet.getRow(i + 2).getCell(1).value = r.ticker;
-  });
+  });*/
+  // Benchmark results table
+
+sheet.getRow(1).getCell(1).value = "Ticker";
+sheet.getRow(1).getCell(2).value = "Alpha";
+sheet.getRow(1).getCell(5).value = "Beta";
+sheet.getRow(1).getCell(6).value = "RSI";
+
+top.forEach((r, i) => {
+  const row = sheet.getRow(i + 2);
+
+  row.getCell(1).value = r.ticker;
+  row.getCell(2).value = r.alpha;
+  row.getCell(5).value = r.beta;
+  row.getCell(6).value = r.rsi14;
+});
 
   // Columns C–D: criteria panel — labels/values come directly from staticFilters
   const runDate = new Date().toISOString().slice(0, 10);

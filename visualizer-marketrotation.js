@@ -386,6 +386,35 @@ header h1 {
   color: #8b949e;
 }
 
+.report-link {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #ffffffaa; 
+  background: #0d1a2e;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.25s ease;
+  /* Stacked box-shadow layers create the intense fluorescent core and outer glow */
+  box-shadow: 
+    0 0 4px #ffffff, 
+    0 0 10px #ffffff, 
+    0 0 20px #64b5f6, 
+    0 0 30px #2196f3;
+}
+
+.report-link:hover {
+  background: #13233d;
+  border-color: #ffffff;
+  /* Glow intensifies on hover for an authentic neon effect */
+  box-shadow: 
+    0 0 6px #ffffff, 
+    0 0 16px #ffffff, 
+    0 0 26px #64b5f6, 
+    0 0 40px #2196f3;
+}
+
 .tabs {
   display: flex;
   gap: 12px;
@@ -619,19 +648,16 @@ footer {
   <h1>📊 Market Rotation Analysis</h1>
   <div class="subtitle">
     Investment signals for sector and index rotation • ${new Date().toLocaleString()}
+
+  <br><br>
   </div>
+
+  <a class="report-link" href="report-loader.html">
+    ← General Stock Universe Report
+  </a>
 </header>
 
-<header>
-  <h1>
-    📊 Stocks Analytics Dashboard
-  </h1>
-  
-   <a class="report-link" href="report-loader.html">
-  ← General Stock Universe Report 
-</a>
 
-</header>
 
 <div class="tabs">
   <button class="tab-btn" data-tab="overview">Overview</button>
