@@ -83,12 +83,84 @@ async function readData() {
     }
   });
 
+
+  // Read the dedicated Index Charting dataset separately.
+  const indexRows = [];
+  const indexSheet = wb.getWorksheet("IndexChartingCurrent");
+
+  if (indexSheet) {
+    const headers = indexSheet
+      .getRow(1)
+      .values
+      .slice(1)
+      .map((value) => String(value ?? "").trim());
+
+    const headerIndex = Object.fromEntries(
+      headers.map((header, index) => [header, index])
+    );
+
+    const requiredHeaders = [
+      "Ticker",
+      "IndexMembership",
+      "Return_63D",
+      "Drawdown_252D",
+    ];
+
+    const missingHeaders = requiredHeaders.filter(
+      (header) => headerIndex[header] === undefined
+    );
+
+    if (missingHeaders.length) {
+      throw new Error(
+        `IndexChartingCurrent missing required headers: ${missingHeaders.join(", ")}`
+      );
+    }
+
+    const getNumber = (value) => {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    };
+
+    indexSheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const values = row.values.slice(1);
+      const get = (header) => values[headerIndex[header]];
+
+      const ticker = String(get("Ticker") ?? "").trim();
+      if (!ticker) return;
+
+      indexRows.push({
+        Ticker: ticker,
+        IndexMembership: String(get("IndexMembership") ?? "").trim(),
+        Sector: get("Sector") ?? null,
+        Beta: getNumber(get("Beta")),
+        RSI: getNumber(get("RSI")),
+        Return_63D: getNumber(get("Return_63D")),
+        Drawdown_252D: getNumber(get("Drawdown_252D")),
+        JensenAlpha_63D: getNumber(get("JensenAlpha_63D")),
+        HistoryBars: getNumber(get("HistoryBars")),
+        PriceAsOf: get("PriceAsOf") ?? null,
+      });
+    });
+  } else {
+    console.warn(
+      '[IndexCharting] Worksheet "IndexChartingCurrent" not found; scatter chart will be empty.'
+    );
+  }
+
   const benchmarks = loadBenchmarkDefinitions(wb);
 
-return {
-  rows,
-  benchmarks,
-};
+  return {
+    rows,
+    benchmarks,
+    indexRows,
+  };
+
 }
 
 // ======================================================
@@ -265,6 +337,17 @@ header {
   padding:16px;
 }
 
+.chart-container {
+    position: relative;
+    height: 60vh;
+    min-height: 360px;
+    max-height: 700px;
+  }
+
+  .chart-container canvas {
+    padding: 0;
+  }
+
 .metric {
   margin-top:8px;
 }
@@ -382,426 +465,31 @@ canvas {
 
 <div id="auth"></div>
 
-<div id="app" class="hidden">
+ <div id="app" class="hidden">
 
-<header>
-  <h1>
-    📊 Stocks Analytics Dashboard
-  </h1>
-  
-   <a class="report-link" href="report-loader.html">
-  ← General Stock Universe Report 
-</a>
+  <header>
+    <h1>Index Charting: Return vs. Drawdown</h1>
+    <a class="report-link" href="report-loader.html">
+      ← General Stock Universe Report
+    </a>
+  </header>
 
-</header>
-
-<div class="tabs">
-
-  <button
-    class="tab-btn"
-    data-tab="overview"
-  >
-    Overview
-  </button>
-
-  <button
-  class="tab-btn"
-  data-tab="signals"
->
-  Signals
-</button>
-
-  <button
-    class="tab-btn"
-    data-tab="risk"
-  >
-    Risk
-  </button>
-
-  <button
-    class="tab-btn"
-    data-tab="trends"
-  >
-    Trends
-  </button>
+  <main>
+    <section class="card">
+      <h2>Index Constituents</h2>
+      <p>
+        Compare each ticker's 63-day return against its 252-day drawdown.
+        Each point represents a ticker from the IndexChartingCurrent worksheet.
+      </p>
+      <div class="chart-container">
+        <canvas id="indexChartingScatterChart"></canvas>
+      </div>
+    </section>
+  </main>
 
 </div>
 
 
-<div
-  id="overview"
-  class="page active"
->
-
-  <!-- ===================================== -->
-  <!-- LEADERSHIP STRIP -->
-  <!-- ===================================== -->
-
- 
-
-  <div style=" display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:16px; flex-wrap:wrap; " > <h2 style=" margin:0; font-size:20px; " > Leadership </h2> <button id="toggleLeadersBtn" class="tab-btn" > Show All Leaders </button> </div> <div class="grid" id="overviewGrid" ></div>
-
-  <!-- ===================================== -->
-  <!-- SEARCH -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      margin-top:24px;
-      margin-bottom:16px;
-    "
-  >
-
-    <input
-      id="tickerSearch"
-      type="text"
-      placeholder="Search ticker..."
-      style="
-        width:100%;
-        max-width:320px;
-        padding:12px;
-        border-radius:8px;
-        border:none;
-        background:#1a1d27;
-        color:#ddd;
-        font-size:14px;
-      "
-    />
-
-  </div>
-
-  <!-- ===================================== -->
-  <!-- ANALYTICS TABLE -->
-  <!-- ===================================== -->
-
-  <div
-    style="
-      overflow-x:auto;
-      border-radius:12px;
-    "
-  >
-
-    <table
-      id="analyticsTable"
-      class="analytics-table"
-      style="
-        width:100%;
-        border-collapse:collapse;
-        min-width:900px;
-        background:#161922;
-      "
-    >
-
-      <thead>
-
-        <tr
-          style="
-            background:#1d2330;
-            text-align:left;
-          "
-        >
-
-          <th style="padding:12px;">Ticker</th>
-          <th style="padding:12px;">Score</th>
-          <th style="padding:12px;">RS Rank</th>
-          <th style="padding:12px;">RSI</th>
-          <th style="padding:12px;">MA Slope</th>
-          <th style="padding:12px;">Drawdown</th>
-          <th style="padding:12px;">Beta</th>
-
-        </tr>
-
-      </thead>
-
-      <tbody id="analyticsTableBody">
-      </tbody>
-
-    </table>
-
-  </div>
-
-</div>
-
-
-<div
-  id="signals"
-  class="page"
->
-
-  <div
-    class="card"
-  >
-
-    <h2
-      style="
-        margin-top:0;
-        margin-bottom:12px;
-      "
-    >
-      Institutional Signals
-    </h2>
-
-    <div
-      style="
-        color:#bbb;
-        font-size:14px;
-        line-height:1.7;
-      "
-    >
-      Signals intelligence layer
-      initializing...
-    </div>
-
-    <div
-      id="signalsGrid"
-      class="grid"
-      style="
-        margin-top:18px;
-      "
-    >
-    </div>
-
-  </div>
-
-</div>
-
-<div
-  id="risk"
-  class="page"
->
-
-  <div
-    class="grid"
-    id="riskGrid"
-  ></div>
-
-</div>
-
-<div
-  id="trends"
-  class="page"
->
-
-  <!-- ===================================== -->
-  <!-- MOMENTUM DELTA LADDER -->
-  <!-- ===================================== -->
-
-  <div
-    class="card"
-    style="
-      margin-bottom:24px;
-    "
-  >
-
-    <h2
-      style="
-        margin-top:0;
-        margin-bottom:16px;
-      "
-    >
-      Momentum Delta Ladder
-    </h2>
-    
-    <div
-      style="
-        overflow-x:auto;
-      "
-    >
-
-      <div
-        style="
-          max-height:350px;
-          overflow-y:auto;
-          border:1px solid #333;
-          border-radius:6px;
-        "
-      >
-
-        <table
-          id="momentumTable"
-          class="analytics-table"
-          style="
-            width:100%;
-            border-collapse:collapse;
-            min-width:900px;
-          "
-        >
-
-          <thead>
-
-            <tr
-              style="
-                background:#1d2330;
-                text-align:left;
-              "
-            >
-
-              <th id="sortTicker" style="padding:12px;cursor:pointer;">
-  Ticker ↕
-</th>
-
-<th id="sortDelta" style="padding:12px;cursor:pointer;">
-  Delta ↕
-</th>
-
-<th id="sortComposite" style="padding:12px;cursor:pointer;">
-  Composite ↕
-</th>
-
-<th id="sortRSI" style="padding:12px;cursor:pointer;">
-  RSI ↕
-</th>
-
-<th id="sortMASlope" style="padding:12px;cursor:pointer;">
-  MA Slope ↕
-</th>
-
-            </tr>
-
-          </thead>
-
-          <tbody
-            id="momentumTableBody"
-          >
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  </div>
-
-  <!-- ===================================== -->
-  <!-- LEADERSHIP MOMENTUM QUADRANTS -->
-  <!-- ===================================== -->
-
-  <div
-    class="card"
-    style="
-      margin-bottom:24px;
-    "
-  >
-
-    <h2
-      style="
-        margin-top:0;
-        margin-bottom:10px;
-      "
-    >
-      Leadership Momentum Quadrants
-    </h2>
-
-    <div
-      style="
-        display:grid;
-        grid-template-columns:
-          repeat(
-            auto-fit,
-            minmax(180px,1fr)
-          );
-        gap:8px;
-        margin-bottom:18px;
-        font-size:13px;
-        color:#bbb;
-      "
-    >
-
-      <div>
-        🟢 <strong>Q1 High Score + Positive Momentum</strong><br>
-        Leadership
-      </div>
-
-      <div>
-        🟡 <strong>Q4 Low Score + Positive Momentum</strong><br>
-        Emerging Strength
-      </div>
-
-      <div>
-        🟠 <strong>Q2 High Score + Negative Momentum</strong><br>
-        Exhaustion
-      </div>
-
-      <div>
-        🔴 <strong>Q3 Low Score + Negative Momentum</strong><br>
-        Weakness
-      </div>
-
-    </div>
-
-    <canvas
-      id="quadrantChart"
-    ></canvas>
-
-  </div>
-
-  <!-- ===================================== -->
-  <!-- RSI MARKET REGIME MAP -->
-  <!-- ===================================== -->
-
-  <div
-    class="card"
-  >
-
-    <h2
-      style="
-        margin-top:0;
-        margin-bottom:10px;
-      "
-    >
-      RSI Market Regime Map
-    </h2>
-
-    <div
-      style="
-        margin-bottom:16px;
-        font-size:13px;
-        color:#bbb;
-        line-height:1.6;
-      "
-    >
-      Each point represents one ticker
-      in the current analytics universe.
-      RSI regimes are color-coded for
-      breadth and participation analysis.
-    </div>
-
-    <div
-      style="
-        display:flex;
-        gap:18px;
-        flex-wrap:wrap;
-        margin-bottom:14px;
-        font-size:13px;
-        color:#bbb;
-      "
-    >
-
-      <div>
-        🟢 Strong RSI &gt; 60
-      </div>
-
-      <div>
-        🟡 Neutral RSI 40–60
-      </div>
-
-      <div>
-        🔴 Weak RSI &lt; 40
-      </div>
-
-    </div>
-
-    <canvas
-      id="rsiRegimeChart"
-      height="130"
-    ></canvas>
-
-  </div>
-
-</div>
-
-<script src="/api/analytics-data.js"></script>
 
 <script type="module">
 
@@ -845,13 +533,14 @@ const provider =
 // INDEXCHARTING DATA
 // ======================================================
 
-// Data is injected securely at runtime
-// from /api/analytics-data.js
+// Index-charting data is embedded by buildHtml()
+// in window.__INDEXCHARTING__.
 
 const data =
-  window.__INDEXCHARTING__ || { rows: [] };
+  window.__INDEXCHARTING__ || { rows: [], indexRows: [] };
 
-const rows = data.rows;
+const rows = data.rows || [];
+const indexRows = data.indexRows || [];
 
 //const rows = data.rows || [];
 
@@ -937,13 +626,7 @@ function bootAuthenticatedApp() {
     "hidden"
   );
 
-  renderOverview();
-
-  renderSignals();
-
-  renderRisk();
-
-  renderTrendChart();
+  renderIndexChartingScatter();
 }
 
 // ======================================================
@@ -967,9 +650,9 @@ document
           );
         });
 
-      document
-        .getElementById(tab)
-        .classList.add("active");
+        const targetPage = document.getElementById(tab);
+        if (!targetPage) return;
+        targetPage.classList.add("active");
 
       if (tab === "trends") { renderTrendChart(); }
     };
@@ -1049,21 +732,15 @@ onAuthStateChanged(
         "hidden"
       );
 
-      renderOverview();
-
-      renderRisk();
-
       bootAuthenticatedApp();
 
       
-toggleLeadersBtn.onclick =
-  () => {
-
-    showAllLeaders =
-      !showAllLeaders;
-
-    renderOverview();
-  };
+     if (toggleLeadersBtn) {
+          toggleLeadersBtn.onclick = () => {
+            showAllLeaders = !showAllLeaders;
+            renderOverview();
+          };
+        }
 
 
 
@@ -1468,6 +1145,8 @@ function renderTrendChart() {
   renderQuadrantChart();
 
   renderRSIRegimeChart();
+
+  renderIndexChartingScatter();
 }
 
 // ======================================================
@@ -2293,6 +1972,121 @@ else {
     }
   });
 }
+
+  // ======================================================
+  // INDEX CHARTING: RETURN VS DRAWDOWN
+  // ======================================================
+
+  function renderIndexChartingScatter() {
+    const canvas = document.getElementById("indexChartingScatterChart");
+    if (!canvas) return;
+
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+
+    const points = (Array.isArray(indexRows) ? indexRows : [])
+      .filter((row) =>
+        Number.isFinite(row.Return_63D) &&
+        Number.isFinite(row.Drawdown_252D)
+      )
+      .map((row) => ({
+        x: row.Return_63D,
+        y: row.Drawdown_252D,
+        ticker: row.Ticker,
+        membership: row.IndexMembership || "Unspecified",
+        sector: row.Sector,
+        jensenAlpha: row.JensenAlpha_63D,
+        beta: row.Beta,
+        rsi: row.RSI,
+        priceAsOf: row.PriceAsOf,
+      }));
+
+    new Chart(canvas, {
+      type: "scatter",
+      data: {
+        datasets: [{
+          label: "Index Constituents",
+          data: points,
+          backgroundColor: "rgba(59, 130, 246, 0.75)",
+          borderColor: "rgba(147, 197, 253, 1)",
+          pointRadius: 4,
+          pointHoverRadius: 7,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const point = context.raw;
+                const lines = [
+                  point.ticker + " | " + point.membership,
+                  "63-day return: " + (point.x * 100).toFixed(1) + "%",
+                  "252-day drawdown: " + (point.y * 100).toFixed(1) + "%",
+                ];
+
+                if (Number.isFinite(point.jensenAlpha)) {
+                  lines.push("Jensen alpha (63D): " + point.jensenAlpha);
+                }
+                if (Number.isFinite(point.beta)) {
+                  lines.push("Beta: " + point.beta);
+                }
+                if (Number.isFinite(point.rsi)) {
+                  lines.push("RSI: " + point.rsi);
+                }
+                if (point.sector) {
+                  lines.push("Sector: " + point.sector);
+                }
+                if (point.priceAsOf) {
+                  lines.push("Price as of: " + point.priceAsOf);
+                }
+
+
+                return lines;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: "linear",
+            title: {
+              display: true,
+              text: "63-day return (stored value)",
+              color: "#ddd",
+            },
+            grid: { color: "rgba(255,255,255,0.12)" },
+            ticks: {
+  color: "#aaa",
+  callback(value) {
+    return (Number(value) * 100).toFixed(1) + "%";
+  },
+},
+            border: { color: "rgba(255,255,255,0.45)" },
+          },
+          y: {
+            type: "linear",
+            title: {
+              display: true,
+              text: "252-day drawdown (positive magnitude; stored value)",
+              color: "#ddd",
+            },
+            grid: { color: "rgba(255,255,255,0.12)" },
+            ticks: {
+  color: "#aaa",
+  callback(value) {
+    return (Number(value) * 100).toFixed(1) + "%";
+  },
+},
+            border: { color: "rgba(255,255,255,0.45)" },
+          },
+        },
+      },
+    });
+  }
 
 </script>
 </body>

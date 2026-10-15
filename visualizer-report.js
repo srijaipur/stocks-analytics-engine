@@ -128,7 +128,12 @@ function buildHtml(rows) {
   Indices & Sectoral Market Rotation →
 </a>
 </div>
-  <button id="logoutBtn" class="logout-btn">Logout</button>
+<div>
+  <a class="analytics-link" href="indexcharting-loader.html">
+  Index Charting →
+</a>
+</div>
+  <div><button id="logoutBtn" class="logout-btn">Logout</button></div>
 </header>
 <div class="page">
   <div class="search-wrap">

@@ -51,14 +51,12 @@ async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
 (async () => {
   const portfolio = await readSheet("Portfolio");
   const watchlist = await readSheet("Watchlist");
-  const rut2000 = await readSheet("Russel_2000");
-  const dowJones = await readSheet("Dow_Jones");
-  const nasdaq = await readSheet("Nasdaq");
-  const sp100 = await readSheet("SP_100");
 
+  /*** This is where we control what goes into the universe ***/
   const universe = [
-    ...new Set([...portfolio, ...watchlist, ...rut2000, ...dowJones, ...nasdaq, ...sp100]),
+    ...new Set([...portfolio, ...watchlist]),
   ];
+/*** This is where we control what goes into the universe ***/
 
   const sp100Prices = await getPrices("^OEX");
 

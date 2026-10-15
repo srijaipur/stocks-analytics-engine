@@ -171,6 +171,22 @@ app.get("/marketrotation-loader.html", (req, res) => {
   res.sendFile(process.cwd() + "/data/marketrotation-loader.html");
 });
 
+app.get("/indexcharting", authMiddleware, requireRole("user"), async (req, res) => {
+  console.log("AUTH HEADER:", req.headers.authorization);
+  console.log("ROUTE HIT /indexcharting");
+  console.log("USER:", req.user);
+
+  try {
+    res.sendFile(process.cwd() + "/data/indexcharting.html");
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load Index Charting" });
+  }
+});
+
+app.get("/indexcharting-loader.html", (req, res) => {
+  res.sendFile(process.cwd() + "/data/indexcharting-loader.html");
+});
+
 console.log("STEP C: routes defined up to loader endpoints");
 
 /**

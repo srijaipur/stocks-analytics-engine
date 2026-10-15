@@ -40,7 +40,7 @@ const SECTOR_MAP = {
   Utilities: "sec_utilities",
   "Communication Services": "sec_communicationservices",
 };
-
+  
 const ALL_SECTORS = Object.keys(SECTOR_MAP);
 
 const SHARED_SECTORS = [
