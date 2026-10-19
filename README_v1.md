@@ -53,36 +53,42 @@ Generate intelligent trading signals, risk assessments, and market analysis from
 ## Key Features
 
 ### 1. **Signals Tab** 🟢🟡🔴
+
 - BUY/SELL/HOLD signals with confidence % (0-100)
 - Position sizing recommendations via Kelly Criterion
 - Sorted by confidence descending for prioritization
 - Summary: Count of signals + average confidence by type
 
 ### 2. **Risk Analysis Tab** ⚠️
+
 - Portfolio-level metrics: Sharpe ratio, Sortino ratio, Calmar ratio, Beta
 - Per-stock risk assessment with high-risk alerts (>20% drawdown)
 - Risk ranking: LOW / MEDIUM / HIGH classification
 - Volatility and drawdown tracking
 
 ### 3. **Trends & Regime Tab** 📈
+
 - Trend regime classification: STRONG_UPTREND → WEAK_UPTREND → NEUTRAL → WEAK_DOWNTREND → STRONG_DOWNTREND
 - Regime strength (0-100): Signal clarity and momentum quality
 - Actionability ranking: Which regimes offer best entry points
 - Historical regime grid + summary statistics
 
 ### 4. **Market Rotation Analysis** 🔄
+
 - Track 4 major indices (SPY, QQQ, IWM, EEM) and 11 sectors
 - Identify relative strength leaders and laggards
 - Sector rotation opportunities
 - Inter-market divergences
 
 ### 5. **Advanced Analytics** 🔬
+
 - Correlation heatmaps between top holdings
 - Factor contribution breakdown (how much does each metric drive signals?)
 - Percentile rankings across the universe
 - Earnings calendar integration
 
 ### 6. **Security & Access Control** 🔐
+
 - Firebase OAuth 2.0 with Google Sign-In
 - Role-based access (analyst, trader, admin)
 - Protected endpoints: `/report`, `/analytics`, `/marketrotation`
@@ -201,6 +207,7 @@ stocks-analytics-engine/
 ## Quick Start
 
 ### Prerequisites
+
 - **Node.js** ≥ 18.0 (with npm)
 - **Excel** (or compatible tool to edit `.xlsx`)
 - **Firebase** account (for auth; optional for local demo)
@@ -343,16 +350,16 @@ npm run start
 
 ### Environment Variables
 
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `FIREBASE_PROJECT_ID` | Yes | - | Firebase project identifier |
-| `FIREBASE_PRIVATE_KEY` | Yes | - | Service account private key |
-| `FIREBASE_CLIENT_EMAIL` | Yes | - | Service account email |
-| `GOOGLE_SHEETS_API_KEY` | No | - | For optional sheet sync |
-| `PORT` | No | 3000 | Express server port |
-| `NODE_ENV` | No | development | Environment mode |
-| `EXCEL_FILE_PATH` | No | ./data/stocks.xlsx | Workbook location |
-| `UNIVERSE_SIZE` | No | 500 | Tickers to analyze |
+| Variable                | Required | Default            | Purpose                     |
+| ----------------------- | -------- | ------------------ | --------------------------- |
+| `FIREBASE_PROJECT_ID`   | Yes      | -                  | Firebase project identifier |
+| `FIREBASE_PRIVATE_KEY`  | Yes      | -                  | Service account private key |
+| `FIREBASE_CLIENT_EMAIL` | Yes      | -                  | Service account email       |
+| `GOOGLE_SHEETS_API_KEY` | No       | -                  | For optional sheet sync     |
+| `PORT`                  | No       | 3000               | Express server port         |
+| `NODE_ENV`              | No       | development        | Environment mode            |
+| `EXCEL_FILE_PATH`       | No       | ./data/stocks.xlsx | Workbook location           |
+| `UNIVERSE_SIZE`         | No       | 500                | Tickers to analyze          |
 
 ### Ticker Configuration
 
@@ -392,6 +399,7 @@ npm run pipeline
 ```
 
 **Outputs**:
+
 - `data/stocks.xlsx` — Updated with new scores (ScoresCurrent sheet)
 - `data/report.html` — Executive summary report
 - `data/analytics.html` — Advanced multi-factor dashboard
@@ -437,8 +445,8 @@ const auth = await firebase.auth().signInWithPopup(provider);
 const token = await auth.user.getIdToken();
 
 // Fetch analytics
-const response = await fetch('/analytics', {
-  headers: { 'Authorization': `Bearer ${token}` }
+const response = await fetch("/analytics", {
+  headers: { Authorization: `Bearer ${token}` },
 });
 const data = await response.json();
 ```
@@ -485,17 +493,20 @@ const data = await response.json();
 ### Data Transformations
 
 **Excel → Factors**:
+
 ```
 Ticker + 19 data columns → Normalization → Percentile ranking → Factor computation
 ```
 
 **Factors → Score**:
+
 ```
 EPS (25%) + Momentum (25%) + Risk (20%) + Accumulation (10%) + Alpha (10%) - Valuation (10%)
 = Composite Score (0-100)
 ```
 
 **Score → Signal**:
+
 ```
 IF score ≥ 75 AND RSI ∈ [40,60] AND MA_Slope > 0 THEN BUY
 IF score ≤ 25 THEN SELL
@@ -503,6 +514,7 @@ ELSE HOLD
 ```
 
 **Signal + Context → Regime**:
+
 ```
 IF MA_Slope > 20% AND score > 60 THEN STRONG_UPTREND
 IF MA_Slope > 5% AND score > 50 THEN WEAK_UPTREND
@@ -520,6 +532,7 @@ IF MA_Slope > 5% AND score > 50 THEN WEAK_UPTREND
 **Output**: `data/report.html`
 
 **Sections**:
+
 - Portfolio performance summary
 - Top 10 gainers/losers
 - Signal distribution pie chart
@@ -527,11 +540,13 @@ IF MA_Slope > 5% AND score > 50 THEN WEAK_UPTREND
 - Risk/reward scatter plot
 
 **Features**:
+
 - Self-contained HTML (no external CDN dependencies)
 - Responsive design
 - Print-friendly
 
 **Command**:
+
 ```bash
 node visualizer-report.js
 ```
@@ -547,6 +562,7 @@ node visualizer-report.js
 **Tabs**:
 
 #### 📊 Signals Tab
+
 - BUY/SELL/HOLD signals with confidence % (0-100)
 - Position sizing recommendations (Kelly Criterion)
 - Sorted by confidence descending
@@ -554,6 +570,7 @@ node visualizer-report.js
 - Detailed table: Ticker, Score, Signal, Confidence, Position Size
 
 #### ⚠️ Risk Tab
+
 - Portfolio-level metrics:
   - Sharpe Ratio ≈ (Return_63D - 0.043) / Beta (MVP approximation, ~70% accuracy)
   - Sortino Ratio ≈ Sharpe but penalizes downside only
@@ -566,6 +583,7 @@ node visualizer-report.js
 - MVP Notes: Approximations use Beta as volatility proxy; production version uses real historical volatility
 
 #### 📈 Trends Tab
+
 - Regime classification grid (visual overview of all regimes)
 - 5 trend regimes:
   - STRONG_UPTREND: Score > 75, RSI [40-60], Slope > 20%
@@ -577,11 +595,13 @@ node visualizer-report.js
 - Detailed table: Ticker, Regime, Strength, Confidence, Actionability, Daily Delta
 
 **Command**:
+
 ```bash
 node visualizer-analytics.js
 ```
 
 **Features**:
+
 - Chart.js 4.4.3 quadrant/momentum/RSI visualizations
 - Interactive tables with sorting/filtering
 - Color-coded risk levels (green/yellow/red)
@@ -596,6 +616,7 @@ node visualizer-analytics.js
 **Output**: `data/marketrotation.html`
 
 **Sections**:
+
 - **Indices Dashboard** (SPY, QQQ, IWM, EEM):
   - 1-day, 5-day, 20-day return comparison
   - Relative strength ranking
@@ -612,6 +633,7 @@ node visualizer-analytics.js
   - Diversification opportunities
 
 **Command**:
+
 ```bash
 node visualizer-marketrotation.js
 ```
@@ -625,11 +647,13 @@ node visualizer-marketrotation.js
 **Output**: `data/indices.html`
 
 **Content**:
+
 - Index scores and rankings
 - Technical indicators per index
 - Economic sector representation
 
 **Command**:
+
 ```bash
 node visualizer-indices.js
 ```
@@ -645,6 +669,7 @@ All computation logic is isolated in `factors/` directory for reusability and te
 **Purpose**: Compute fundamental metrics (EPS, earnings quality, institutional flows)
 
 **Key Functions**:
+
 ```javascript
 computeFundamentals(stock) → {
   eps_score: 0-100,        // EPS percentile
@@ -654,6 +679,7 @@ computeFundamentals(stock) → {
 ```
 
 **Data Used**:
+
 - `EPS_TTM`, `EPS_Percentile`, `EPS_Growth` from Excel
 - `Inst_Accumulation`, `Net_Inst` (institutional flows)
 
@@ -664,6 +690,7 @@ computeFundamentals(stock) → {
 **Purpose**: Compute technical indicators (RSI, moving averages, momentum)
 
 **Key Functions**:
+
 ```javascript
 computeRSI(prices) → 0-100          // Relative strength
 computeMA(prices, period) → number  // Moving average
@@ -671,6 +698,7 @@ computeSlope(prices) → -100 to 100  // Trend slope %
 ```
 
 **Data Used**:
+
 - `RSI_14Day`, `MA_Slope_50` (pre-computed in Excel)
 - `SMA200_Dist` (distance from 200-day MA)
 
@@ -681,6 +709,7 @@ computeSlope(prices) → -100 to 100  // Trend slope %
 **Purpose**: Generate BUY/SELL/HOLD trading signals with confidence
 
 **Key Functions**:
+
 ```javascript
 computeDecisionSignal(stock) → {
   signal: "BUY" | "SELL" | "HOLD",
@@ -691,11 +720,13 @@ computeDecisionSignal(stock) → {
 ```
 
 **Decision Rules**:
+
 - **BUY**: `score ≥ 75 AND RSI ∈ [40,60] AND slope > 0`
 - **SELL**: `score ≤ 25`
 - **HOLD**: Everything else
 
 **Confidence Composite** (20% each):
+
 1. Composite score distance from threshold
 2. RSI proximity to neutral zone
 3. MA slope strength
@@ -709,6 +740,7 @@ computeDecisionSignal(stock) → {
 **Purpose**: Compute portfolio and stock-level risk
 
 **Key Functions**:
+
 ```javascript
 computeRiskMetrics(stock) → {
   sharpe_ratio: number,      // Return / Volatility
@@ -726,6 +758,7 @@ computePortfolioRiskMetrics(stocks) → {
 ```
 
 **MVP Approximations** (~70% accuracy):
+
 - Beta as volatility proxy
 - 63-day return annualized to 252 days
 - Win rate estimated from daily indicators
@@ -737,6 +770,7 @@ computePortfolioRiskMetrics(stocks) → {
 **Purpose**: Classify trend regime (uptrend/downtrend/neutral)
 
 **Key Functions**:
+
 ```javascript
 analyzeTrendRegime(stock) → {
   regime: "STRONG_UPTREND"|"WEAK_UPTREND"|"NEUTRAL"|"WEAK_DOWNTREND"|"STRONG_DOWNTREND",
@@ -748,6 +782,7 @@ analyzeTrendRegime(stock) → {
 ```
 
 **Regime Rules**:
+
 ```javascript
 STRONG_UPTREND:  score > 75 AND RSI [40-60] AND slope > 20%
 WEAK_UPTREND:    score 50-75 AND RSI [40-60] AND slope 5-20%
@@ -763,6 +798,7 @@ STRONG_DOWNTREND: score < 25 AND slope < -20%
 **Purpose**: Percentile ranking (normalize raw values to 0-100 scale)
 
 **Key Functions**:
+
 ```javascript
 percentileRank(value, values[]) → 0-100  // Percentile of value vs array
 normalizeCellValue(raw) → normalized     // Clean/parse Excel values
@@ -775,6 +811,7 @@ normalizeCellValue(raw) → normalized     // Clean/parse Excel values
 **Purpose**: Alternative risk computation (volatility, drawdown, win rate)
 
 **Key Functions**:
+
 ```javascript
 computeVaR(returns, confidence=0.95) → number  // Value at risk
 computeDrawdown(prices) → number               // Maximum loss %
@@ -806,6 +843,7 @@ curl http://localhost:3000/
 **Executive summary report (Firebase auth required)**
 
 **Headers**:
+
 ```
 Authorization: Bearer <Firebase-ID-Token>
 ```
@@ -825,6 +863,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/report
 **Advanced analytics dashboard (OAuth role-based)**
 
 **Headers**:
+
 ```
 Authorization: Bearer <Firebase-ID-Token>
 X-Role: analyst|trader|admin
@@ -841,6 +880,7 @@ X-Role: analyst|trader|admin
 **Sector/index rotation analysis**
 
 **Headers**:
+
 ```
 Authorization: Bearer <Firebase-ID-Token>
 ```
@@ -856,11 +896,13 @@ Authorization: Bearer <Firebase-ID-Token>
 **Get Firebase ID token (internal use)**
 
 **Body**:
+
 ```json
 { "uid": "user-id" }
 ```
 
 **Response**:
+
 ```json
 { "token": "eyJhbGc..." }
 ```
@@ -924,24 +966,28 @@ npm run format
 ### Common Tasks
 
 **Update tickers**:
+
 ```bash
 nano data/tickers.json
 npm run pipeline
 ```
 
 **Debug single ticker**:
+
 ```bash
 node tools/test_ticker.js AAPL
 # Outputs: Full factor computation for debugging
 ```
 
 **Check signal accuracy**:
+
 ```bash
 # Compare current signals vs previous day
 node tools/verify_clean.js
 ```
 
 **Reset to baseline**:
+
 ```bash
 npm run clean
 npm run load-tickers
@@ -985,6 +1031,7 @@ npm run setup
 ## Roadmap
 
 ### Phase 1: Component Extraction (Next 1-2 weeks)
+
 - [ ] Extract scoring utilities to `lib/scoringUtils.js`
 - [ ] Extract Excel reader to `lib/excelReader.js`
 - [ ] Extract formatting functions to `lib/formatUtils.js`
@@ -992,18 +1039,21 @@ npm run setup
 - **Impact**: 120 lines saved, consistency across 4+ visualizers
 
 ### Phase 2: UI Component Standardization (Week 3-4)
+
 - [ ] Extract card renderer to `lib/cardRenderer.js`
 - [ ] Extract Chart.js factory to `lib/chartFactory.js`
 - [ ] Standardize styling across all reports
 - **Impact**: 180 lines saved, consistent look & feel
 
 ### Phase 3: Factor Module Integration (Month 2)
+
 - [ ] Make decisionSignal.js importable across visualizers
 - [ ] Refactor visualizer-analytics.js to use factor imports
 - [ ] Enable visualizer.js to reuse signal logic
 - **Impact**: Testability improvement, code reuse
 
 ### Phase 4: Data Model Enhancement (Month 2-3)
+
 - [ ] Add computed columns to Excel:
   - `Volatility_20D` (real historical)
   - `Sharpe_Ratio` (production-grade)
@@ -1015,6 +1065,7 @@ npm run setup
 - **Impact**: 30% accuracy improvement on risk metrics
 
 ### Phase 5: Advanced Features (Month 3+)
+
 - [ ] Backtesting engine (validate signals historically)
 - [ ] Real-time alerts (Discord/Slack notifications)
 - [ ] Machine learning regime predictor
@@ -1062,6 +1113,7 @@ Fixes #<issue-number>
 **Types**: `feat` | `fix` | `docs` | `refactor` | `test` | `chore`
 
 **Example**:
+
 ```
 feat(signals): add Kelly Criterion position sizing
 
@@ -1091,6 +1143,7 @@ MIT License © 2026 Stocks Analytics Engine
 ## Acknowledgments
 
 Built with:
+
 - [ExcelJS](https://github.com/exceljs/exceljs) — Excel workbook handling
 - [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup) — Authentication
 - [Finviz API](https://finviz.com) — Stock data

@@ -1,118 +1,246 @@
-import ExcelJS from "exceljs";
-import path from "path";
-import { fileURLToPath } from "url";
+import "dotenv/config";
+import { detectSignals } from "./signals/signalEngine.js";
+import { readSheet } from "./sheets/readSheet.js";
+import { writeScores } from "./sheets/writeSheet.js";
+import { getFundamentals } from "./data/fundamentals.js";
+import { getPrices } from "./data/prices.js";
+import { getInstitutionalActivity } from "./data/institutions.js";
+import { getCashflow } from "./data/cashflow.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORKBOOK_PATH = path.resolve(__dirname, "../data/stocks.xlsx");
+import {
+  fundamentalLevel,
+  fundamentalTrend,
+  institutionalAccumulation,
+  getBeta,
+  getRsi14,
+  getSma200Dist,
+  getEarningsDate,
+  earningsQuality,
+} from "./factors/fundamentals.js";
 
-export async function writeScores(rows, signals) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(WORKBOOK_PATH);
+import {
+  jensensAlpha,
+  relativeStrength,
+  maSlope,
+  volumeExpansion,
+  getReturn,
+} from "./factors/technicals.js";
 
-  let sheet = workbook.getWorksheet("ScoresCurrent");
-  if (!sheet) sheet = workbook.addWorksheet("ScoresCurrent");
+import { percentileRank } from "./factors/normalize.js";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  sheet.getRow(1).values = [
-    "Ticker",
-    "EPS_TTM",
-    "EPS_Percentile",
-    "EPS_Growth",
-    "Inst_Accumulation",
-    "Alpha_63D",
-    "Beta",
-    "RSI_14Day",
-    "SMA200_Dist",
-    "MA_Slope_50",
-    "Volume_Expansion",
-    "Net_Inst",
+async function withRetry(fn, maxRetries = 5, baseDelayMs = 2000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = err?.response?.status;
+      if (attempt === maxRetries) throw err;
+      let delayMs = baseDelayMs * Math.pow(2, attempt - 1);
 
-    "RS_vs_SP100",
-    "Return_63D",
-    "RS_Rank",
-    "Drawdown_%",
+      if (status === 429) {
+        const retryAfter = Number(err.response?.headers?.["retry-after"]);
+        if (retryAfter > 0) delayMs = retryAfter * 1000;
+      }
 
-    "Composite_Score",
-    "New_Composite_Score",
-    "Earnings_Date",
-    "Daily_Composite_Score_delta",
+      await sleep(delayMs);
+    }
+  }
+}
+
+(async () => {
+  const portfolio = await readSheet("Portfolio");
+  const watchlist = await readSheet("Watchlist");
+  const rut2000 = await readSheet("Russel_2000");
+  const dowJones = await readSheet("Dow_Jones");
+  const nasdaq = await readSheet("Nasdaq");
+  const sp100 = await readSheet("SP_100");
+
+  const universe = [
+    ...new Set([...portfolio, ...watchlist, ...rut2000, ...dowJones, ...nasdaq, ...sp100]),
   ];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const sp100Prices = await getPrices("^OEX");
+  console.log(`\n📋 Universe: ${universe.length} tickers\n`);
 
-  let prevSheet = workbook.getWorksheet("ScoresPreviousDay");
-  if (!prevSheet) prevSheet = workbook.addWorksheet("ScoresPreviousDay");
+  const data = [];
+  const skipped = [];
 
-  const prevScores = new Map();
+  for (let i = 0; i < universe.length; i++) {
+    const ticker = universe[i];
+    process.stdout.write(`[${i + 1}/${universe.length}] ${ticker}... `);
 
-  prevSheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-    const ticker = row.getCell(1).value;
-    const score = parseFloat(row.getCell(2).value);
-    if (ticker && !isNaN(score)) {
-      prevScores.set(ticker, score);
+    try {
+      const fundamentals = await withRetry(() => getFundamentals(ticker));
+      const [prices, institutions, cashflow] = await Promise.all([
+        getPrices(ticker),
+        getInstitutionalActivity(ticker),
+        getCashflow(ticker),
+      ]);
+
+      data.push({ ticker, fundamentals, prices, institutions, cashflow });
+
+      console.log("✓");
+
+      await sleep(1000);
+    } catch (err) {
+      console.log("✗");
+
+      skipped.push(ticker);
     }
-  });
-
-  const lastRow = sheet.lastRow?.number || 1;
-  if (lastRow > 1) sheet.spliceRows(2, lastRow - 1);
-
-  const color = (score) => {
-    if (score >= 70) return "FFC6EFCE";
-    if (score >= 50) return "FFDDEBF7";
-    if (score >= 30) return "FFFCE4D6";
-    return "FFFFC7CE";
-  };
-
-  rows.forEach((row, i) => {
-    const ticker = row[0];
-    const newScore = row[17];
-
-    const prev = prevScores.get(ticker);
-    const delta = prev !== undefined ? +(newScore - prev).toFixed(2) : null;
-
-    const excelRow = sheet.getRow(i + 2);
-    excelRow.values = [...row, delta];
-
-    const fillColor = color(newScore);
-
-    excelRow.eachCell({ includeEmpty: true }, (cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: fillColor },
-      };
-    });
-
-    excelRow.commit();
-  });
-
-  prevSheet.spliceRows(1, prevSheet.lastRow?.number || 0);
-  prevSheet.getRow(1).values = ["_date_", today];
-
-  rows.forEach((row, i) => {
-    prevSheet.getRow(i + 2).values = [row[0], row[17]];
-  });
-
-  // =========================
-  // SignalsTriggered Sheet
-  // =========================
-
-  let signalSheet = workbook.getWorksheet("SignalsTriggered");
-  if (!signalSheet) signalSheet = workbook.addWorksheet("SignalsTriggered");
-
-  // Headers
-  signalSheet.getRow(1).values = ["Ticker", "Score", "Triggers"];
-
-  // Clear existing rows
-  const lastSignalRow = signalSheet.lastRow?.number || 1;
-  if (lastSignalRow > 1) {
-    signalSheet.spliceRows(2, lastSignalRow - 1);
   }
 
-  // Populate
-  signals.forEach((s, i) => {
-    signalSheet.getRow(i + 2).values = [s.ticker, s.score, s.triggers];
+  // =========================
+
+  // NORMALIZATION ARRAYS
+
+  // =========================
+
+  const allLevels = data.map((d) => fundamentalLevel(d.fundamentals));
+  const allTrends = data.map((d) => fundamentalTrend(d.fundamentals));
+  const allSlopes = data.map((d) => maSlope(d.prices, 50));
+  const allRsi = data.map((d) => getRsi14(d.fundamentals));
+  const allSma200 = data.map((d) => getSma200Dist(d.fundamentals));
+  const allReturn63 = data.map((d) => getReturn(d.prices, 63));
+  const allRelativeStrength = data.map((d) => relativeStrength(d.prices, sp100Prices));
+  const allInstAccum = data.map((d) => institutionalAccumulation(d.fundamentals));
+
+  // Earnings Quality (OCF / Net Income) is only available when Yahoo Finance returns
+  // both inputs; build the ranking baseline from valid values only so missing data
+  // doesn't skew the cross-universe percentile distribution.
+
+  const allEarningsQualityValid = data
+
+    .map((d) => earningsQuality(d.cashflow))
+
+    .filter((v) => v !== null);
+
+  const allDrawdown = data.map((d) => {
+    let peak = d.prices[0]?.close || 1;
+
+    let maxDD = 0;
+
+    for (let i = 1; i < d.prices.length; i++) {
+      if (d.prices[i].close > peak) peak = d.prices[i].close;
+
+      const dd = (peak - d.prices[i].close) / peak;
+
+      if (dd > maxDD) maxDD = dd;
+    }
+
+    return maxDD * 100;
   });
 
-  await workbook.xlsx.writeFile(WORKBOOK_PATH);
-}
+  // =========================
+
+  // BUILD ROWS
+
+  // =========================
+
+  const rows = data.map(({ ticker, fundamentals, prices, institutions, cashflow }) => {
+    const level = fundamentalLevel(fundamentals);
+    const epsPercentile = percentileRank(level, allLevels);
+    const trend = fundamentalTrend(fundamentals);
+    const trendRank = percentileRank(trend, allTrends);
+    const beta = getBeta(fundamentals);
+    const rsi14 = getRsi14(fundamentals);
+    const sma200Dist = getSma200Dist(fundamentals);
+    const maSlope50 = maSlope(prices, 50);
+    const maSlopeRank = percentileRank(maSlope50, allSlopes);
+    const rs = relativeStrength(prices, sp100Prices);
+    const rsRank = percentileRank(rs, allRelativeStrength);
+    const return63 = getReturn(prices, 63);
+    const return63Rank = percentileRank(return63, allReturn63);
+
+    let peak = prices[0]?.close || 1;
+
+    let maxDD = 0;
+
+    for (let i = 1; i < prices.length; i++) {
+      if (prices[i].close > peak) peak = prices[i].close;
+
+      const dd = (peak - prices[i].close) / peak;
+
+      if (dd > maxDD) maxDD = dd;
+    }
+
+    const drawdownPct = maxDD * 100;
+    const drawdownRank = percentileRank(drawdownPct, allDrawdown);
+    const alpha = jensensAlpha(prices, sp100Prices, beta);
+    const instAccumulation = institutionalAccumulation(fundamentals);
+    const instAccumRank = percentileRank(instAccumulation, allInstAccum);
+    const volExpansion = volumeExpansion(prices);
+    const netInstitutional = institutions.netActivity;
+    const earningsQualityRaw = earningsQuality(cashflow);
+
+    // Missing OCF/NetIncome data → neutral rank (50) so it doesn't bias the composite.
+
+    const earningsQualityRank =
+      earningsQualityRaw === null
+        ? 50
+        : percentileRank(earningsQualityRaw, allEarningsQualityValid);
+
+    // OLD MODEL
+
+    const compositeScore =
+      0.3 * epsPercentile +
+      0.3 * trendRank +
+      0.2 * maSlopeRank +
+      0.1 * percentileRank(rsi14, allRsi) +
+      0.1 * percentileRank(sma200Dist, allSma200);
+
+    // NEW MODEL
+    // 25% Trend Strength + 20% EPS Growth + 15% Institutional Accumulation + 15% RS Rank
+    // + 10% Return_63D + 10% MA_Slope_50 + 5% Earnings Quality - 15% Drawdown
+
+    const newCompositeScore =
+      0.25 * trendRank +
+      0.2 * epsPercentile +
+      0.15 * instAccumRank +
+      0.15 * rsRank +
+      0.1 * return63Rank +
+      0.1 * maSlopeRank +
+      0.05 * earningsQualityRank -
+      0.15 * drawdownRank;
+
+    const earningsDate = getEarningsDate(fundamentals);
+
+    return [
+      ticker,
+      level,
+      epsPercentile,
+      trend,
+      instAccumulation,
+      alpha,
+      beta,
+      rsi14,
+      sma200Dist,
+      maSlope50,
+      volExpansion,
+      netInstitutional,
+      rs,
+      return63,
+      rsRank,
+      drawdownPct,
+      compositeScore,
+      newCompositeScore,
+      earningsDate,
+      instAccumRank,
+      earningsQualityRaw,
+      earningsQualityRank,
+    ];
+  });
+
+  console.log(
+    rows.slice(0, 5).map((r) => ({
+      ticker: r[0],
+      old: r[16],
+      new: r[17],
+    }))
+  );
+
+  const signals = detectSignals(rows);
+  console.log("Signals Sample:", signals.slice(0, 5));
+  await writeScores(rows, signals);
+  console.log(`✅ Done — ${rows.length} tickers`);
+})();

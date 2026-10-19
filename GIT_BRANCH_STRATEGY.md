@@ -49,6 +49,7 @@ These files are already created/modified and ready to commit:
 ### Step 3: Stage and Commit
 
 **Approach 1: Single comprehensive commit**
+
 ```bash
 # Stage all changes
 git add visualizer-marketrotation.js
@@ -77,6 +78,7 @@ Verification: SENTINEL_VERIFICATION_REPORT.md"
 ```
 
 **Approach 2: Separate commits (if preferred)**
+
 ```bash
 # Commit 1: Core implementation
 git add visualizer-marketrotation.js package.json
@@ -111,6 +113,7 @@ git push origin feature/market-rotation-analysis
 ### Step 5: Create Pull Request
 
 **Via GitHub Web UI**:
+
 1. Go to repository home
 2. Click "Compare & pull request" (should appear after push)
 3. Set:
@@ -120,14 +123,17 @@ git push origin feature/market-rotation-analysis
 5. Click "Create pull request"
 
 **PR Template**:
+
 ```markdown
 ## 📊 Market Rotation Visualizer
 
 ### Overview
-Adds comprehensive market rotation analysis feature that tracks sector 
+
+Adds comprehensive market rotation analysis feature that tracks sector
 and index performance to identify rotation signals for investment decisions.
 
 ### Changes
+
 - ✅ `visualizer-marketrotation.js` (1,090 lines)
   - Fetches 15 instruments (4 indices + 11 sector ETFs)
   - Computes momentum (5D, 21D, 63D, YTD)
@@ -144,12 +150,14 @@ and index performance to identify rotation signals for investment decisions.
   - Sentinel Verification Report (code quality)
 
 ### Non-Breaking Changes
+
 - ✅ **Zero modifications** to existing visualizers
 - ✅ **Backward compatible** with all existing scripts
 - ✅ **Standalone module** (independent data sources)
 - ✅ **Reuses** existing utilities (getReturn, percentileRank)
 
 ### Testing Checklist
+
 - [x] Syntax validation (eslint): **0 errors**
 - [x] Code review (Sentinel): **PASSED**
 - [x] Backward compatibility: **VERIFIED**
@@ -158,20 +166,24 @@ and index performance to identify rotation signals for investment decisions.
 - [ ] Existing scripts test: `npm run build:report`, etc.
 
 ### Deployment Notes
+
 - Output file: `data/marketrotation.html`
 - Data sources: Yahoo Finance (existing dependency)
 - Performance: <35 seconds end-to-end
 - No new npm packages required
 
 ### Related Documentation
+
 - 📋 [App Spec](./App_Spec/MARKET_ROTATION_SPEC.md)
 - 📖 [Implementation Guide](./MARKET_ROTATION_IMPLEMENTATION_GUIDE.md)
 - ✅ [Verification Report](./SENTINEL_VERIFICATION_REPORT.md)
 
 ### Addresses
+
 Improves investment decision-making with market rotation insights.
 
 ### Next Steps
+
 1. ✅ Manual testing in staging
 2. ✅ Merge to main
 3. ✅ Deploy to production
@@ -181,26 +193,31 @@ Improves investment decision-making with market rotation insights.
 ### Step 6: Code Review & Merge
 
 **Review Checklist** (for PR reviewers):
+
 ```markdown
 ### Code Quality
+
 - [ ] Syntax is valid (check SENTINEL_VERIFICATION_REPORT.md)
 - [ ] No lint errors
 - [ ] Follows project conventions
 - [ ] Error handling is comprehensive
 
 ### Functionality
+
 - [ ] Fetches all 15 instruments successfully
 - [ ] Computes momentum correctly
 - [ ] Generates valid rotation signals
 - [ ] HTML report renders without errors
 
 ### Integration
+
 - [ ] No modifications to existing files (except scripts)
 - [ ] No new dependencies added
 - [ ] Backward compatible with existing code
 - [ ] Can be run independently
 
 ### Documentation
+
 - [ ] App Spec is clear and comprehensive
 - [ ] Implementation Guide is practical
 - [ ] Verification Report shows 0 errors
@@ -208,6 +225,7 @@ Improves investment decision-making with market rotation insights.
 ```
 
 **Merge Strategy**:
+
 ```bash
 # Option 1: Squash merge (cleaner history)
 # In GitHub UI: Click "Squash and merge"
@@ -234,33 +252,33 @@ name: Market Rotation Analysis
 on:
   schedule:
     # Run daily at 10 AM UTC (after market opens)
-    - cron: '0 10 * * MON-FRI'
+    - cron: "0 10 * * MON-FRI"
   workflow_dispatch: # Manual trigger
 
 jobs:
   rotation-analysis:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'npm'
-      
+          node-version: "18"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Generate market rotation analysis
         run: npm run visualize:rotation
-      
+
       - name: Verify output
         run: |
           [ -f data/marketrotation.html ] || exit 1
           [ -s data/marketrotation.html ] || exit 1
-      
+
       - name: Commit and push results
         run: |
           git config user.name "GitHub Actions"
@@ -276,10 +294,11 @@ jobs:
 
 ### Release Notes Template
 
-```markdown
+````markdown
 ## v1.0.0 - Market Rotation Visualizer
 
 ### ✨ New Features
+
 - Market rotation analysis for investment decision-making
 - Tracks 4 major indices (S&P 100, Russell 2000, Dow Jones, Nasdaq)
 - Monitors 11 market sectors via ETF performance
@@ -288,30 +307,37 @@ jobs:
 - Interactive HTML report with heatmaps, charts, and detailed tables
 
 ### 📦 Dependencies
+
 - No new packages; reuses existing (yahoo-finance2, chart.js)
 
 ### 🚀 Usage
+
 ```bash
 npm run visualize:rotation        # Generate report
 npm run visualize:rotation:serve  # Generate + open in browser
 ```
+````
 
 ### 📊 Output
+
 - File: `data/marketrotation.html`
 - Size: ~500KB
 - Metrics: 15 instruments × 4 timeframes + rotation signals
 
 ### ✅ Testing
+
 - Syntax: 0 errors (eslint)
 - Code review: PASSED (Sentinel)
 - Backward compatibility: VERIFIED
 - Performance: <35 seconds end-to-end
 
 ### 🔗 Documentation
+
 - App Spec: [MARKET_ROTATION_SPEC.md](./App_Spec/MARKET_ROTATION_SPEC.md)
 - Implementation: [MARKET_ROTATION_IMPLEMENTATION_GUIDE.md](./MARKET_ROTATION_IMPLEMENTATION_GUIDE.md)
 - Verification: [SENTINEL_VERIFICATION_REPORT.md](./SENTINEL_VERIFICATION_REPORT.md)
-```
+
+````
 
 ---
 
@@ -325,9 +351,10 @@ git branch -a | grep market-rotation
 # Solution: Use different branch name or delete existing
 git branch -D feature/market-rotation-analysis
 git checkout -b feature/market-rotation-analysis
-```
+````
 
 ### Issue: Merge conflicts
+
 ```bash
 # Rebase on latest main
 git fetch origin
@@ -340,13 +367,17 @@ git push origin feature/market-rotation-analysis -f
 ```
 
 ### Issue: PR shows too many changes
+
 This is expected given the new module size. To review:
+
 1. Focus on `package.json` diff (should only show 2 new script lines)
 2. Review `SENTINEL_VERIFICATION_REPORT.md` for quality metrics
 3. Check `visualizer-marketrotation.js` imports and error handling
 
 ### Issue: CI/CD failure
+
 Check GitHub Actions logs for:
+
 - Missing dependencies: Run `npm ci`
 - Syntax errors: Check SENTINEL report
 - File permissions: Ensure read/write access to data/
@@ -392,4 +423,4 @@ git push origin main
 
 **Branch Strategy Version**: 1.0  
 **Status**: Ready for implementation  
-**Created**: 2026-08-14  
+**Created**: 2026-08-14
